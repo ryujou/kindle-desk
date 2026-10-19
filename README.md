@@ -1,4 +1,24 @@
-# Kindle Desk — 墨水屏桌面仪表盘
+<p align="center">
+  <img src="docs/images/banner.svg" alt="Kindle Desk：Windows 采集、局域网传输与墨水屏显示架构" width="100%">
+</p>
+
+<h1 align="center">Kindle Desk</h1>
+
+<p align="center"><strong>让 Kindle 成为桌面上的时钟、电脑仪表和 Codex 宠物伴侣，随时回到原系统阅读。</strong></p>
+
+<p align="center">横屏墨水屏 · Windows 性能 · 双账号额度 · 灰度宠物 · 局部刷新</p>
+
+<p align="center">
+  <img alt="Device Paperwhite 4" src="https://img.shields.io/badge/Device-Paperwhite_4-47667c?style=flat-square">
+  <img alt="Firmware 5.16.7" src="https://img.shields.io/badge/Firmware-5.16.7-526e83?style=flat-square">
+  <img alt="Host Windows" src="https://img.shields.io/badge/Host-Windows-20758a?style=flat-square">
+  <img alt="Python 3.12" src="https://img.shields.io/badge/Python-3.12-47667c?style=flat-square">
+  <img alt="License MIT" src="https://img.shields.io/badge/License-MIT-20758a?style=flat-square">
+</p>
+
+<p align="center">
+  <a href="#项目亮点">项目亮点</a> · <a href="#界面预览">界面预览</a> · <a href="#从原版-kindle-开始">Kindle 越狱</a> · <a href="#windows-数据服务">电脑服务</a> · <a href="#安装到-kindle">设备安装</a> · <a href="#codex-宠物与公开进度">宠物配置</a> · <a href="#工程入口">源码与测试</a>
+</p>
 
 Kindle 原系统 + HTML / CSS / ES5 JavaScript，Windows 端使用 Python 标准库和 .NET Framework 服务宿主。
 
@@ -6,11 +26,7 @@ Kindle 原系统 + HTML / CSS / ES5 JavaScript，Windows 端使用 Python 标准
 
 实机开发环境为 **Kindle Paperwhite 4（第 10 代）、固件 5.16.7**。其他型号或固件需要分别确认越狱、Mesquite 和 FBInk 兼容性，不能仅凭分辨率相同判断可用。电脑端面向 Windows 10/11，使用 Python 3.12 和 PowerShell 7。
 
-![Kindle Desk 模拟界面](docs/images/dashboard.png)
-
-上图使用作者授权展示的宠物形象，以灰度模拟墨水屏观感；电脑性能、额度和进度文字均为演示数据，不包含真实账号或会话。Plus 示例显示 5 小时与每周窗口，Pro 示例仅显示每周窗口；宠物原始图集不随源码分发。
-
-## 功能
+## 项目亮点
 
 | 区域 | 显示内容 |
 | --- | --- |
@@ -24,6 +40,12 @@ Kindle 原系统 + HTML / CSS / ES5 JavaScript，Windows 端使用 Python 标准
 Plus、Pro 使用相同的排版和数据规则：有 5 小时窗口就显示 5 小时，有每周窗口就显示每周；没有返回的窗口不补造。剩余量为 `100 − usedPercent`，到达重置时间后等待真实新数据，不直接显示 100%。
 
 GPU 目前读取 NVIDIA 第 0 张显卡的 `nvidia-smi`。没有 NVIDIA 显卡或指标不可用时显示横线，CPU 和内存仍可使用。宠物素材与会话绑定均为可选项。
+
+## 界面预览
+
+![Kindle Desk 模拟界面](docs/images/dashboard.png)
+
+上图使用作者授权展示的宠物形象，以灰度模拟墨水屏观感；电脑性能、额度和进度文字均为演示数据，不包含真实账号或会话。Plus 示例显示 5 小时与每周窗口，Pro 示例仅显示每周窗口；宠物原始图集不随源码分发。
 
 ## 安装顺序
 
