@@ -8,6 +8,7 @@ kindle/extensions/kindle-desk/bin/
 kindle/extensions/kindle-desk/config.sh
 kindle/extensions/kindle-desk/app/pets/manifest.json
 kindle/extensions/kindle-desk/app/pets/*.png
+kindle/extensions/kindle-desk/native-frames*/
 device-work/
 dist/
 previews/

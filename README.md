@@ -6,9 +6,10 @@
 
 <p align="center"><strong>让 Kindle 成为桌面上的时钟、电脑仪表和 Codex 宠物伴侣，随时回到原系统阅读。</strong></p>
 
-<p align="center">横屏墨水屏 · Windows 性能 · 双账号额度 · 灰度宠物 · 局部刷新</p>
+<p align="center">横屏墨水屏 · Windows 性能 · 双账号额度 · 点阵宠物 · A2 局部刷新</p>
 
 <p align="center">
+  <a href="https://github.com/ryujou/kindle-desk/releases/tag/v0.2.0"><img alt="Version v0.2.0" src="https://img.shields.io/badge/Version-v0.2.0-20758a?style=flat-square"></a>
   <img alt="Device Paperwhite 4" src="https://img.shields.io/badge/Device-Paperwhite_4-47667c?style=flat-square">
   <img alt="Firmware 5.16.7" src="https://img.shields.io/badge/Firmware-5.16.7-526e83?style=flat-square">
   <img alt="Host Windows" src="https://img.shields.io/badge/Host-Windows-20758a?style=flat-square">
@@ -22,7 +23,7 @@
 
 Kindle 原系统 + HTML / CSS / ES5 JavaScript，Windows 端使用 Python 标准库和 .NET Framework 服务宿主。
 
-横屏显示指针时钟、电脑性能、Codex 额度和宠物伴侣。点击“返回阅读”回到原生书库，保留 Kindle 的阅读功能。时钟按分钟更新；宠物每 2 秒一帧，配合 FBInk 局部刷新。
+横屏显示指针时钟、电脑性能、Codex 额度和宠物伴侣。点击“返回阅读”回到原生书库，保留 Kindle 的阅读功能。时钟按分钟更新；宠物沿用图集的原生帧时长，以加深的 Floyd–Steinberg 点阵配合 FBInk A2 局部刷新。点击人物依次播放挥手、跳跃、向右跑、向左跑，每个动作播放 3 遍后恢复跟随 Codex 状态。
 
 实机开发环境为 **Kindle Paperwhite 4（第 10 代）、固件 5.16.7**。其他型号或固件需要分别确认越狱、Mesquite 和 FBInk 兼容性，不能仅凭分辨率相同判断可用。电脑端面向 Windows 10/11，使用 Python 3.12 和 PowerShell 7。
 
@@ -34,7 +35,7 @@ Kindle 原系统 + HTML / CSS / ES5 JavaScript，Windows 端使用 Python 标准
 | 电脑性能 | CPU、RAM、GPU 使用率，内存容量，GPU 温度 |
 | 当前账号 | Codex app-server 返回的套餐与剩余额度 |
 | 第二账号 | CC Switch 中另一个 OAuth 账号的剩余额度 |
-| 宠物 | 跟随电脑当前账号的宠物选择，使用本地 PNG 图集 |
+| 宠物 | 跟随电脑当前账号的宠物选择，A2 点阵动画，点击切换动作 |
 | 进度气泡 | 指定 Codex 会话的公开进度、完成状态及部分待回答问题 |
 
 Plus、Pro 使用相同的排版和数据规则：有 5 小时窗口就显示 5 小时，有每周窗口就显示每周；没有返回的窗口不补造。剩余量为 `100 − usedPercent`，到达重置时间后等待真实新数据，不直接显示 100%。
@@ -45,7 +46,7 @@ GPU 目前读取 NVIDIA 第 0 张显卡的 `nvidia-smi`。没有 NVIDIA 显卡�
 
 ![Kindle Desk 模拟界面](docs/images/dashboard.png)
 
-上图使用作者授权展示的宠物形象，以灰度模拟墨水屏观感；电脑性能、额度和进度文字均为演示数据，不包含真实账号或会话。Plus 示例显示 5 小时与每周窗口，Pro 示例仅显示每周窗口；宠物原始图集不随源码分发。
+上图使用作者授权展示的宠物形象，展示界面布局；实机宠物以黑白抖动模拟灰度。电脑性能、额度和进度文字均为演示数据，不包含真实账号或会话。Plus 示例显示 5 小时与每周窗口，Pro 示例仅显示每周窗口；宠物原始图集不随源码分发。
 
 ## 安装顺序
 
@@ -112,7 +113,7 @@ python ./tests/preview_server.py
 
 打开 `http://127.0.0.1:18767/preview`。页面使用正式 Kindle 前端，可切换 Plus、Pro、离线、过期、切换账号和额度重置等模拟场景。退出与刷新操作在浏览器中模拟，不操作实体设备。
 
-Python 后端只使用标准库，无需 `pip install`。预览不读取本地登录文件；未提供宠物素材时只显示气泡和仪表。
+Python 数据服务只使用标准库，无需 `pip install`；可选的宠物帧生成工具需要 Pillow。预览不读取本地登录文件；未提供宠物素材时只显示气泡和仪表。
 
 ## Windows 数据服务
 
@@ -252,9 +253,20 @@ Copy-Item ./kindle/extensions/kindle-desk/app/pets/manifest.example.json `
 }
 ```
 
-将 `my-pet.png` 放在同一目录。当前渲染器固定为 8 列，使用 Pet v2 前 9 行状态；`rows` 应填写图集实际总行数，不能把任意 PNG 或 GIF 当作图集使用。
+将 `my-pet.png` 放在同一目录。图集固定为 8 列、每格 192 × 208 像素：Pet v1 为 1536 × 1872（9 行），Pet v2 为 1536 × 2288（11 行），动画使用前 9 行。`rows` 填写实际总行数，文件名使用英文字母、数字、连字符或下划线；任意 PNG 或 GIF 不能直接作为图集。
 
-把 PNG 同步复制到 Kindle 的 `extensions/kindle-desk/app/pets`，重新打开仪表盘；电脑端重启采集任务：
+先在电脑生成实机使用的黑白帧：
+
+```powershell
+python -m pip install Pillow
+python ./tools/prepare-pets.py
+```
+
+工具按 PW4 当前布局输出 210 × 227 像素的单帧 PNG：透明区域合成白色，缩放后用 `255 × (灰度 / 255)^1.2` 适度压暗中间调，再使用 Floyd–Steinberg 抖动。纯白保持纯白；每个角色生成 57 帧，同一图集的多个账号映射只处理一次。输出目录和原始素材都被 Git 排除。
+
+先点击“返回阅读”，把原始 PNG 复制到 Kindle 的 `extensions/kindle-desk/app/pets`，并把生成的整个 `native-frames-fs-dark` 目录复制到 `extensions/kindle-desk/` 下，再重新打开仪表盘。新增或更换图集时都需要重新生成、复制帧图片。当前原生绘图尺寸针对 PW4 布局标定，其他分辨率需要相应调整生成尺寸和页面区域。
+
+电脑端修改 manifest 后重启采集任务：
 
 ```powershell
 Stop-ScheduledTask KindleDesk-Codex
@@ -263,7 +275,7 @@ Start-ScheduledTask KindleDesk-Codex
 
 两个账号可能给同一角色分配不同 ID，可以让多个 manifest 键指向同一张已确认相同的图片。每约 3 秒读取选择，切号后按当前账号匹配；未登记素材的宠物不会自动下载。manifest 在采集任务启动时加载，修改后需重启任务。
 
-桌面宠物图片空白但名称还在时，可以先尝试桌面宠物列表的刷新按钮，排除下载链接过期。Kindle 使用本地 PNG，不依赖临时下载 URL。
+桌面宠物图片空白但名称还在时，先检查网络并刷新宠物列表；若持续卡在加载，完全退出并重开 Codex。Kindle 使用本地素材，不依赖临时下载 URL。
 
 ### 会话进度
 
@@ -289,7 +301,7 @@ Start-ScheduledTask KindleDesk-Codex
 | 当前账号额度 | `account/rateLimits/read` | 约 5 分钟，切号后重新获取 |
 | 另一账号额度 | CC Switch 本地 OAuth 账号 + 额度接口 | 约 5 分钟 |
 | 宠物和公开进度 | 当前用户本地文件 | 约 3 秒 |
-| 宠物画面 | 本地 PNG 图集 | 每 2 秒一帧 |
+| 宠物画面 | 本地黑白帧 | 原生帧时长，绘制忙时跳帧 |
 | 时钟 | Kindle 本地时钟 | 每分钟 |
 
 右侧账号要求 CC Switch 的 `~/.cc-switch/codex_oauth_auth.json` 中恰好存在一个不同于当前登录的候选账号。未安装 CC Switch、没有另一账号或有多个候选时，不显示右侧额度区的标题、分隔线和占位提示。已识别第二账号但查询失败时，仍显示该账号的额度状态。
@@ -302,7 +314,9 @@ Start-ScheduledTask KindleDesk-Codex
 
 ## 墨水屏刷新与休眠
 
-普通文字和指标只更新变化部分，由 Mesquite 管理页面重绘。宠物每帧请求其矩形区域的 FBInk `GC16` 刷新，每 10 帧对该区域闪刷一次；页面默认每 10 分钟请求全刷，也可以点击“清除残影”。
+普通文字和指标只更新变化部分，由 Mesquite 管理页面重绘。宠物通过 `pet-draw.sh` 把准备好的黑白帧直接写入帧缓冲，以 FBInk `A2` 更新人物矩形，动画请求不带反色清屏标志。页面保持默认刷新灵敏度；每 10 分钟、进入页面或切换额度账号等布局变化时请求全刷，也可以点击“清除残影”。
+
+动画使用图集原生帧时长，当前工作动作的目标约为 7.3 帧/秒；单个绘制请求未结束时跳过新帧，避免堆积。PW4 / 5.16.7 实测 10 秒内发出 35 次绘制请求，约 3.5 次/秒；这是请求频率，不等同于屏幕测量帧率。用户实屏确认人物动作不再先反色，点击动作可触发。电脑预览使用相同帧时长，但不保证与设备逐帧同步，也不模拟真实墨水残影。
 
 局部刷新调用不代表 Mesquite 绝不刷新更大范围。帧缓冲截图无法显示真实墨水残影，长期残影和耗电需要在设备上观察。
 
@@ -342,7 +356,7 @@ KOReader 的基本安装命令在 Kindle 搜索栏执行：
 | 电脑在线但额度空白 | 检查当前用户已登录 Codex、`KindleDesk-Codex` 正在运行及接口是否报错 |
 | 右侧账号没有额度 | 检查 CC Switch 存储格式及另一账号数量；多个候选不会自动选择 |
 | 5 小时或每周栏目缺少 | 查看真实响应；只有返回的窗口才显示 |
-| 宠物空白 | 核对当前账号对应 ID、manifest、PNG 路径和图集行数；重启采集任务与仪表盘 |
+| 宠物空白或绘制失败 | 核对 ID、manifest、原始 PNG 和图集行数，运行 `prepare-pets.py` 并复制 `native-frames-fs-dark`；重新打开仪表盘 |
 | 进度不变化 | 确认 `-Rollout` 指向当前活动会话，当前实现不会自动跟随桌面聊天 |
 | 右侧被裁切或方向错误 | 确认使用正式 Mesquite 入口，避免再叠加手动系统旋转；其他固件需独立验证 |
 | 残影增加 | 点击“清除残影”，确认 FBInk 能运行；降低其他动态内容不能替代真实屏幕验证 |
@@ -380,6 +394,7 @@ Kindle 更新前先返回阅读，覆盖 `extensions/kindle-desk` 中对应程�
 | `pc/ServiceHost.cs`、`pc/manage.ps1` | Windows 服务宿主与管理 |
 | `tests/preview_server.py` | 无登录的模拟预览 |
 | `tools/prepare-device.ps1` | 下载设备 HTTP 工具 |
+| `tools/prepare-pets.py` | 生成加深的 Floyd–Steinberg 黑白动画帧 |
 | `third-party/NOTICE.md` | 第三方来源、许可与分发边界 |
 
 基础测试：
@@ -387,9 +402,10 @@ Kindle 更新前先返回阅读，覆盖 `extensions/kindle-desk` 中对应程�
 ```powershell
 python -m unittest discover -s tests -p '*_test.py'
 node ./tests/model.test.cjs
+node ./tests/pet.test.cjs
 ```
 
-测试使用合成数据，覆盖账号切换、额度归属、HTTP 摘要和公开消息过滤，不修改真实登录。Node.js 只用于前端模型测试，运行正式服务不需要 Node.js。
+测试使用合成数据，覆盖账号切换、额度归属、HTTP 摘要、公开消息过滤、动画时长和点击动作恢复，不修改真实登录。Node.js 只用于前端模型测试，运行正式服务不需要 Node.js。
 
 上游系统本身已在 PW4 / 5.16.7 实机验证横屏、返回阅读、局域网数据、双账号、宠物和休眠恢复。开源目录使用通用应用 ID，测试结果不替代其他型号、其他固件或全新设备的完整安装验收。
 

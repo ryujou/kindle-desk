@@ -35,7 +35,7 @@ for image in "$BASE/app/pets/"*.png; do
     chmod 0644 "$APP_ROOT/pets/$(basename "$image")"
 done
 chmod 0755 "$APP_ROOT/pets"
-cp "$BASE/app/cgi-bin/quota-refresh.sh" "$BASE/app/cgi-bin/pet-refresh.sh" "$BASE/app/cgi-bin/companion.sh" "$BASE/app/cgi-bin/snapshot.sh" "$BASE/app/cgi-bin/exit.sh" "$BASE/app/cgi-bin/refresh.sh" "$APP_ROOT/cgi-bin/"
+cp "$BASE/app/cgi-bin/quota-refresh.sh" "$BASE/app/cgi-bin/pet-draw.sh" "$BASE/app/cgi-bin/companion.sh" "$BASE/app/cgi-bin/snapshot.sh" "$BASE/app/cgi-bin/exit.sh" "$BASE/app/cgi-bin/refresh.sh" "$APP_ROOT/cgi-bin/"
 chmod 0755 "$APP_ROOT" "$APP_ROOT/cgi-bin" "$APP_ROOT/cgi-bin/"*.sh
 chmod 0644 "$APP_ROOT/index.html" "$APP_ROOT/style.css" "$APP_ROOT/model.js" "$APP_ROOT/app.js" "$APP_ROOT/pet.js" "$APP_ROOT/companion.js" "$APP_ROOT/config.xml"
 chown "$framework_uid:$framework_gid" "$APP_ROOT" "$APP_ROOT/cgi-bin" "$APP_ROOT/"*.html "$APP_ROOT/"*.css "$APP_ROOT/"*.js "$APP_ROOT/config.xml"
