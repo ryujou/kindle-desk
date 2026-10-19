@@ -1,0 +1,1 @@
+{"items":[{"name":"Kindle Desk","items":[{"name":"Open Kindle Desk","action":"sh /mnt/us/extensions/kindle-desk/start.sh","exitmenu":true,"status":false},{"name":"Stop Kindle Desk","action":"sh /mnt/us/extensions/kindle-desk/stop.sh","exitmenu":false,"status":false}]}]}

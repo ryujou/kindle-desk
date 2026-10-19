@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kindle Desk</title><link rel="stylesheet" href="style.css"></head>
+<body><main id="desk">
+<header><strong>DESK / 桌面</strong><span id="connection">电脑未连接</span><button id="exit">返回阅读</button></header>
+<section id="clock-panel" aria-label="时钟"><canvas id="dial" width="620" height="620" aria-label="指针时钟"></canvas><div id="time">--:--</div><div id="date"></div></section>
+<section id="data-panel"><h1>电脑性能 <span>WINDOWS</span></h1>
+<div class="metric"><span class="label">CPU</span><div class="gauge"><div id="cpu-bar"></div></div><strong id="cpu">—</strong></div>
+<div class="metric"><span class="label">RAM</span><div class="gauge"><div id="ram-bar"></div></div><strong id="ram">—</strong></div>
+<div class="metric"><span class="label">GPU</span><div class="gauge"><div id="gpu-bar"></div></div><strong id="gpu">—</strong></div>
+<div id="hardware-note"><span id="memory">内存 —</span><span id="temperature">显卡温度 —</span></div>
+<section id="companion"><div id="pet" aria-label="宠物"></div><div id="bubble"><div id="pet-state"></div><div id="pet-message"></div></div></section><section id="codex"><div class="quota-heading"><strong>Codex <span id="plan"></span></strong><span id="quota-state">额度未获取</span></div><div id="account">账号未确认</div><div id="quota-rows"></div><section id="other-account" hidden><div class="other-heading"><strong>Codex <span id="other-plan"></span></strong></div><div id="other-rows"></div></section><div id="quota-nav"><button id="next" hidden>下一组</button></div></section>
+</section><footer><span id="message"></span><button id="clean">清除残影</button><button id="refresh">刷新数据</button></footer>
+<section id="closed" hidden><h2>信息屏已停止</h2><p id="close-message">正在返回原系统…</p><button id="resume">重新打开信息屏</button></section>
+</main><script src="model.js"></script><script src="pet.js"></script><script src="companion.js"></script><script src="app.js"></script></body></html>
