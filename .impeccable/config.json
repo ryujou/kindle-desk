@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "prototypes/codex-pet/simulator.html"
+        ],
+        "createdAt": "2026-10-20T07:54:44.585Z",
+        "reason": "Agent: .viewport is the clipping frame of the fixed 1000x740 Kindle emulator canvas, intentionally flush with .screen; actual text is inset by native padding 17px 24px and screen-head/content offsets 54px, confirmed in desktop-menu.png. Adding wrapper padding would change the scale geometry."
+      }
+    ]
+  }
+}
