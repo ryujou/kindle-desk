@@ -46,3 +46,21 @@ assert.deepEqual(FuukaCompanion.layout('早呀，老师。今天也别太勉强�
     ['早呀，老师。', '今天也别太勉强自己。']);
 assert.deepEqual(FuukaCompanion.layout('老师，今天也辛苦啦。', text => text.length * 24, 500),
     ['老师，今天也辛苦啦。']);
+
+let measured = 0;
+global.getComputedStyle = () => ({fontWeight: 'normal', fontSize: '22px', fontFamily: 'sans-serif'});
+global.document = {createElement: () => ({getContext: () => ({measureText: text => {measured++; return {width: text.length * 24};}})})};
+const attrs = {}, node = {clientWidth: 500, textContent: '', getAttribute: key => attrs[key], setAttribute: (key, value) => {attrs[key] = value;}};
+const entry = {text: '早呀，老师。今天也别太勉强自己。', kind: 'morning'};
+FuukaCompanion.paint(node, entry);
+const initialMeasures = measured;
+FuukaCompanion.paint(node, entry);
+assert.equal(measured, initialMeasures, 'unchanged speech avoids layout measurements');
+node.clientWidth = 300;
+FuukaCompanion.paint(node, entry);
+assert.ok(measured > initialMeasures, 'width changes still recompute line wrapping');
+assert.equal(node.textContent, '早呀，老师。\n今天也别太勉强自己。');
+node.textContent = '任务进度';
+FuukaCompanion.paint(node, entry);
+assert.equal(node.textContent, '早呀，老师。\n今天也别太勉强自己。', 'returning from a task restores speech');
+delete global.document; delete global.getComputedStyle;

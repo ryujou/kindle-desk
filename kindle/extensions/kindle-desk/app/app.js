@@ -4,6 +4,7 @@
     var manualRequest = null, manualTimer, manualUntil = 0;
     var fullTimer, fullDebounce, fullRequest = null, refreshWarning = '';
     var FULL_REFRESH_MS = 10 * 60 * 1000;
+    var panelUpdated = 0;
     function endpoint(name) { return (window.kindle ? 'http://127.0.0.1:18766/' : '') + 'cgi-bin/' + name + '.sh'; }
     function el(id) { return document.getElementById(id); }
     function text(id, value) { var node = el(id); if (node.textContent !== value) node.textContent = value; }
@@ -40,7 +41,8 @@
     function metric(name, value) {
         var node = el(name), label = value === null ? '—' : Math.round(value) + '%';
         if (node.textContent !== label) { node.textContent = value === null ? '—' : String(Math.round(value)); if (value !== null) { var unit = document.createElement('span'); unit.textContent = '%'; node.appendChild(unit); } }
-        el(name + '-bar').style.width = (value === null ? 0 : value) + '%';
+        var bar = el(name + '-bar'), width = (value === null ? 0 : value) + '%';
+        if (bar.style.width !== width) bar.style.width = width;
     }
     var quotaSignature = '';
     function render() {
@@ -77,7 +79,8 @@
             var resetNode = currentBox.querySelector('.quota-reset'), resetText = resetLabel(currentRow);
             if (resetNode.textContent !== resetText) resetNode.textContent = resetText;
         }
-        el('next').hidden = totalPages === 1; text('next', (page + 1) + '/' + totalPages + '　下一组');
+        if (el('next').hidden !== (totalPages === 1)) el('next').hidden = totalPages === 1;
+        text('next', (page + 1) + '/' + totalPages + '　下一组');
         text('message', refreshWarning || transportMessage);
     }
     function fullRefresh() {
@@ -99,14 +102,16 @@
     function queueFullRefresh() { if (!active) return; clearTimeout(fullDebounce); fullDebounce = setTimeout(fullRefresh, 400); }
     function finish(xhr, message) {
         if (request !== xhr) return;
-        clearTimeout(deadline); request = null; el('refresh').disabled = manualUntil > 0;
-        if (message) { snapshot = null; transportMessage = message; }
-        render(); if (active) pollTimer = setTimeout(load, 15000);
+        clearTimeout(deadline); request = null;
+        if (el('refresh').disabled !== (manualUntil > 0)) el('refresh').disabled = manualUntil > 0;
+        if (message) { snapshot = null; panelUpdated = 0; transportMessage = message; DeskCompanion.update(null); render(); }
+        if (active) pollTimer = setTimeout(load, !message && !panelUpdated ? 0 : 3000);
     }
     function load() {
         if (!active || request) return;
-        clearTimeout(pollTimer); var xhr = new XMLHttpRequest(); request = xhr; el('refresh').disabled = true;
-        xhr.open('GET', endpoint('snapshot') + '?t=' + new Date().getTime(), true);
+        clearTimeout(pollTimer); var xhr = new XMLHttpRequest(); request = xhr;
+        var includePanel = !panelUpdated || new Date().getTime() - panelUpdated >= 15000;
+        xhr.open('GET', endpoint('snapshot') + (includePanel ? '?t=' : '?panel=0&t=') + new Date().getTime(), true);
         xhr.onreadystatechange = function () {
             if (xhr.readyState !== 4 || request !== xhr) return;
             if (xhr.status !== 200) { finish(xhr, '电脑离线 · 等待重新连接'); return; }
@@ -114,7 +119,14 @@
                 var data = JSON.parse(xhr.responseText);
                 if (data.error) { finish(xhr, data.error === 'not_configured' ? '电脑未配置' : '电脑离线 · 等待重新连接'); return; }
                 if (data.schemaVersion !== 1) { finish(xhr, '电脑数据格式不支持'); return; }
-                snapshot = data; transportMessage = data.demo === true ? '演示数据 · 未接入真实账号' : '';
+                if (includePanel && !('computer' in data)) { finish(xhr, '电脑数据格式不支持'); return; }
+                DeskCompanion.update(data.companion);
+                var stamp = new Date().getTime();
+                if (includePanel) {
+                    snapshot = data; panelUpdated = stamp;
+                    transportMessage = data.demo === true ? '演示数据 · 未接入真实账号' : '';
+                    render();
+                }
             } catch (error) { finish(xhr, '电脑数据格式错误'); return; }
             finish(xhr, '');
         };
@@ -131,7 +143,7 @@
         manualUntil = 0; clearTimeout(manualTimer); manualRequest = null;
         text('refresh', '刷新数据'); el('refresh').disabled = false;
         if (message) { transportMessage = message; render(); }
-        else { load(); DeskCompanion.pause(); DeskCompanion.resume(); }
+        else { panelUpdated = 0; load(); }
     }
     function checkManual(method) {
         if (!active || !manualUntil) return;
@@ -152,7 +164,7 @@
     }
     function tick() { if (!active) return; updateClock(); render(); clockTimer = setTimeout(tick, 60000 - new Date().getTime() % 60000 + 20); }
     function pause() { if (window.kindle && window.kindle.device && typeof window.kindle.device.setSensitivity === 'function') window.kindle.device.setSensitivity(false); clearTimeout(manualTimer); manualUntil = 0; var manual = manualRequest; manualRequest = null; if (manual) manual.abort(); text('refresh', '刷新数据'); DeskCompanion.pause(); active = false; clearTimeout(clockTimer); clearTimeout(pollTimer); clearTimeout(deadline); clearTimeout(fullTimer); clearTimeout(fullDebounce); var pending = request; request = null; if (pending) pending.abort(); var repaint = fullRequest; fullRequest = null; if (repaint) repaint.abort(); el('refresh').disabled = manualUntil > 0; }
-    function enter() { if (active) return; if (window.kindle && window.kindle.device && typeof window.kindle.device.setSensitivity === 'function') window.kindle.device.setSensitivity(false); active = true; DeskCompanion.resume(); snapshot = null; el('closed').hidden = true; fit(); tick(); load(); queueFullRefresh(); }
+    function enter() { if (active) return; if (window.kindle && window.kindle.device && typeof window.kindle.device.setSensitivity === 'function') window.kindle.device.setSensitivity(false); active = true; DeskCompanion.resume(); snapshot = null; panelUpdated = 0; el('closed').hidden = true; fit(); tick(); load(); queueFullRefresh(); }
     el('next').onclick = function () { var count = Math.max(1, Math.ceil(DeskModel.derive(snapshot, now()).rows.length / 2)); page = (page + 1) % count; render(); queueFullRefresh(); };
     el('refresh').onclick = manualRefresh;
     el('clean').onclick = fullRefresh;

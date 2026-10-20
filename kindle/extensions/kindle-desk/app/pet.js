@@ -71,7 +71,8 @@
     Pet.prototype.setPet = function (value) {
         var self = this;
         if (value.state !== 'ready') {
-            this.loadingId = null; this.petId = null; this.node.style.visibility = 'hidden';
+            this.loadingId = null; this.petId = null;
+            if (this.node.style.visibility !== 'hidden') this.node.style.visibility = 'hidden';
             clearTimeout(this.timer); this.timer = null;
             return;
         }

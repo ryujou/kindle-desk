@@ -217,10 +217,15 @@ class State:
         self.gpu_error = None
         self.lock = threading.Lock()
 
-    def snapshot(self):
+    def snapshot(self, include_panel=True):
         with self.lock:
             quota = self.quota if time.monotonic() - self.quota_received < 45 else empty_quota('error')
-            return dict(schemaVersion=1, demo=False, generatedAt=int(time.time()), computer=self.computer, codex=quota)
+            companion = self.companion if time.monotonic() - self.companion_received < 15 else None
+            value = dict(schemaVersion=1, demo=False, generatedAt=int(time.time()),
+                         companion=companion or {'pet': {'state': 'unavailable'}, 'activity': {'state': 'offline', 'message': '电脑未连接'}})
+            if include_panel:
+                value.update(computer=self.computer, codex=quota)
+            return value
 
 
 def make_handler(state):
@@ -242,7 +247,7 @@ def make_handler(state):
         def do_GET(self):
             path = self.path.split('?')[0]
             if path in ('/snapshot', '/cgi-bin/snapshot.sh'):
-                self.reply(state.snapshot())
+                self.reply(state.snapshot(include_panel=self.path.partition('?')[2].split('&')[0] != 'panel=0'))
             elif path in ('/companion', '/cgi-bin/companion.sh'):
                 with state.lock:
                     value = state.companion if time.monotonic() - state.companion_received < 15 else None

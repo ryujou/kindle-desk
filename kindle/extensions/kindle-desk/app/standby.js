@@ -92,13 +92,16 @@
         return best || [text];
     }
     function paint(node, entry) {
+        var width = node.clientWidth, previous = node.deskSpeech;
+        if (previous && previous.source === entry.text && previous.kind === entry.kind && previous.width === width && node.textContent === previous.text) return;
         var style = getComputedStyle(node), canvas = document.createElement('canvas'), context = canvas.getContext('2d');
         context.font = style.fontWeight + ' ' + style.fontSize + ' ' + style.fontFamily;
-        var rows = layout(entry.text, function (text) { return context.measureText(text).width; }, node.clientWidth);
+        var rows = layout(entry.text, function (text) { return context.measureText(text).width; }, width);
         var text = rows.join('\n');
         if (node.textContent !== text) node.textContent = text;
-        node.setAttribute('data-kind', entry.kind);
-        node.setAttribute('data-lines', String(rows.length));
+        if (node.getAttribute('data-kind') !== entry.kind) node.setAttribute('data-kind', entry.kind);
+        if (node.getAttribute('data-lines') !== String(rows.length)) node.setAttribute('data-lines', String(rows.length));
+        node.deskSpeech = {source: entry.text, kind: entry.kind, width: width, text: text};
     }
     function create(random) {
         random = random || Math.random;

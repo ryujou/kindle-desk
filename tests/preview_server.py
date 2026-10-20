@@ -46,6 +46,13 @@ def sample(scenario):
     return result
 
 
+def companion_sample():
+    return {'pet': {'state': 'off'}, 'activity': {'state': 'idle', 'message': ''}, 'otherAccount': sample('pro')['codex'],
+            'environment': {'presence': {'sittingSeconds': 0, 'away': False},
+                            'indoor': {'temperature': 24, 'humidity': 65, 'pm25': 45, 'sampledAt': int(time.time())},
+                            'weather': {'temperature': 22, 'code': 3, 'forecastRain': False, 'sampledAt': int(time.time())}}}
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(APP), **kwargs)
@@ -75,14 +82,15 @@ class Handler(SimpleHTTPRequestHandler):
             elif SCENARIO == 'invalid':
                 self.json({'schemaVersion': 99})
             else:
-                self.json(sample(SCENARIO))
+                value = sample(SCENARIO)
+                value['companion'] = companion_sample()
+                if parse_qs(target.query).get('panel') == ['0']:
+                    del value['computer'], value['codex']
+                self.json(value)
         elif target.path == '/cgi-bin/quota-refresh.sh':
             self.json({'id': 1, 'pending': False})
         elif target.path == '/cgi-bin/companion.sh':
-            self.json({'pet': {'state': 'off'}, 'activity': {'state': 'idle', 'message': ''}, 'otherAccount': sample('pro')['codex'],
-                       'environment': {'presence': {'sittingSeconds': 0, 'away': False},
-                                       'indoor': {'temperature': 24, 'humidity': 65, 'pm25': 45, 'sampledAt': int(time.time())},
-                                       'weather': {'temperature': 22, 'code': 3, 'forecastRain': False, 'sampledAt': int(time.time())}}})
+            self.json(companion_sample())
         elif target.path == '/preview':
             data = (Path(__file__).parent / 'preview.html').read_bytes()
             self.send_response(200)

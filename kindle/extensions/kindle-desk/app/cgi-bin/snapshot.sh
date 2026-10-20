@@ -7,6 +7,7 @@ if [ -z "$ENDPOINT" ]; then
     exit 0
 fi
 case "$ENDPOINT" in http://*) ;; *) printf '{"error":"invalid_endpoint"}\n'; exit 0 ;; esac
+case "${QUERY_STRING:-}" in panel=0|panel=0\&*) ENDPOINT="$ENDPOINT?panel=0" ;; esac
 if response=$(curl -q -fsS --connect-timeout 2 --max-time 4 --max-filesize 65536 "$ENDPOINT"); then
     printf '%s\n' "$response"
 else

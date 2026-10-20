@@ -83,6 +83,17 @@ class CollectorTests(unittest.TestCase):
         state.quota_received = time.monotonic() - 46
         self.assertEqual(state.snapshot()['codex']['state'], 'error')
 
+    def test_combined_companion_heartbeat(self):
+        state = c.State()
+        value = {'pet': {'state': 'ready'}, 'activity': {'state': 'running'}}
+        state.companion = value
+        state.companion_received = time.monotonic()
+        self.assertEqual(state.snapshot()['companion'], value)
+        self.assertNotIn('computer', state.snapshot(include_panel=False))
+        self.assertNotIn('codex', state.snapshot(include_panel=False))
+        state.companion_received -= 16
+        self.assertEqual(state.snapshot()['companion']['activity']['state'], 'offline')
+
     def test_http_snapshot_static_and_local_bridge(self):
         state = c.State()
         server = ThreadingHTTPServer(('127.0.0.1', 0), c.make_handler(state))
@@ -96,6 +107,16 @@ class CollectorTests(unittest.TestCase):
                 value = json.load(response)
             self.assertEqual(value['codex']['account']['plan'], 'plus')
             self.assertFalse(value['demo'])
+            companion = {'pet': {'state': 'off'}, 'activity': {'state': 'idle'}}
+            with opener.open(urllib.request.Request(base + '/companion', data=json.dumps(companion).encode())) as response:
+                self.assertTrue(json.load(response)['ok'])
+            with opener.open(base + '/snapshot') as response:
+                self.assertEqual(json.load(response)['companion'], companion)
+            with opener.open(base + '/snapshot?panel=0&t=123') as response:
+                partial = json.load(response)
+            self.assertEqual(partial['companion'], companion)
+            self.assertNotIn('computer', partial)
+            self.assertNotIn('codex', partial)
             with opener.open(base + '/') as response:
                 self.assertIn(b'model.js', response.read())
             with opener.open(urllib.request.Request(base + '/cgi-bin/refresh.sh', data=b'')) as response:

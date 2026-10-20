@@ -1,6 +1,6 @@
 (function (root) {
     'use strict';
-    var pet = new DeskPet(document.getElementById('pet')), active = false, timer, deadline, request, refreshTimer, refreshRequest;
+    var pet = new DeskPet(document.getElementById('pet')), active = false, refreshTimer, refreshRequest;
     var labels = {idle: '休息中', running: '进行中', waiting: '需要你确认', review: '已完成', failed: '遇到问题', unknown: '等待状态', offline: '电脑未连接'};
     var speech = FuukaCompanion.create(), currentActivity, currentEnvironment;
     var messageNode = document.getElementById('pet-message');
@@ -26,14 +26,16 @@
     };
 
     var otherSignature = '';
+    function text(id, value) { var node = document.getElementById(id); value = String(value); if (node.textContent !== value) node.textContent = value; }
+    function hidden(id, value) { var node = document.getElementById(id); if (node.hidden !== value) node.hidden = value; }
     function pad(n) { return n < 10 ? '0' + n : '' + n; }
     function add(box, tag, cls, text) { var n = document.createElement(tag); n.className = cls; n.textContent = text; box.appendChild(n); return n; }
     function renderOther(value) {
-        document.getElementById('other-account').hidden = !value || !value.account;
+        hidden('other-account', !value || !value.account);
         if (!value || !value.account) {
             otherSignature = '';
-            document.getElementById('other-plan').textContent = '';
-            document.getElementById('other-rows').textContent = '';
+            text('other-plan', '');
+            text('other-rows', '');
             return;
         }
         var model = DeskModel.derive({schemaVersion: 1, codex: value || {state: 'error'}}, Math.floor(new Date().getTime() / 1000));
@@ -72,66 +74,49 @@
     }
     function showEnvironment() {
         var environment = currentEnvironment || {}, indoor = environment.indoor, weather = environment.weather;
-        document.getElementById('ambient-indoor').hidden = !indoor;
+        hidden('ambient-indoor', !indoor);
         if (indoor) {
-            document.getElementById('room-temperature').textContent = Math.round(indoor.temperature);
-            document.getElementById('room-humidity').textContent = Math.round(indoor.humidity);
-            document.getElementById('room-pm25').textContent = Math.round(indoor.pm25);
+            text('room-temperature', Math.round(indoor.temperature));
+            text('room-humidity', Math.round(indoor.humidity));
+            text('room-pm25', Math.round(indoor.pm25));
         }
         var visible = weather && Date.now() / 1000 - weather.sampledAt < 3600;
-        document.getElementById('ambient-weather').hidden = !visible;
+        hidden('ambient-weather', !visible);
         if (visible) {
             var code = weather.code, label = code === 0 ? '晴' : code <= 3 ? '多云' : code <= 48 ? '有雾' :
                 code <= 67 ? '有雨' : code <= 77 ? '有雪' : code <= 82 ? '阵雨' : code <= 86 ? '阵雪' : '雷雨';
-            document.getElementById('outdoor-weather').textContent = Math.round(weather.temperature) + '°C · ' + label;
+            text('outdoor-weather', Math.round(weather.temperature) + '°C · ' + label);
         }
     }
     function show(state, message, data) {
         currentActivity = data ? data.activity : {state: state};
         currentEnvironment = data ? data.environment : null;
         var idle = isStandby(currentActivity);
-        document.getElementById('companion').className = idle ? 'standby' : '';
-        document.getElementById('ambient-info').hidden = !idle;
+        var companionNode = document.getElementById('companion'), className = idle ? 'standby' : '';
+        if (companionNode.className !== className) companionNode.className = className;
+        hidden('ambient-info', !idle);
         pet.setState(idle ? 'idle' : state); pet.setAmbient(idle);
         if (idle) { showEnvironment(); paintSpeech(false); return; }
         var label = document.getElementById('pet-state'), bubble = document.getElementById('pet-message');
         if (label.textContent !== labels[state]) label.textContent = labels[state] || labels.unknown;
         if (bubble.textContent !== message) { bubble.textContent = message; bubble.scrollTop = 0; }
     }
-    function load() {
+    function update(data) {
         if (!active) return;
-        var xhr = new XMLHttpRequest(); request = xhr;
-        function done(ok) {
-            if (request !== xhr) return;
-            request = null; clearTimeout(deadline);
-            if (!ok) { show('offline', ''); renderOther(null); }
-            if (active) timer = setTimeout(load, 3000);
-        }
-        xhr.open('GET', (window.kindle ? 'http://127.0.0.1:18766/' : '') + 'cgi-bin/companion.sh?t=' + new Date().getTime(), true);
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState !== 4 || request !== xhr) return;
-            if (xhr.status !== 200) { done(false); return; }
-            try {
-                var data = JSON.parse(xhr.responseText);
-                if (!data.pet || !data.activity) { done(false); return; }
-                pet.setPet(data.pet);
-                renderOther(data.otherAccount);
-                var message = data.activity.message || '';
-                message = message.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
-                if (data.pet.state === 'missing_asset') message = '新宠物素材尚未同步';
-                show(data.activity.state, message, data);
-                done(true);
-            } catch (error) { done(false); }
-        };
-        deadline = setTimeout(function () { done(false); xhr.abort(); }, 6500);
-        xhr.send(null);
+        if (!data || !data.pet || !data.activity) { show('offline', ''); renderOther(null); return; }
+        pet.setPet(data.pet);
+        renderOther(data.otherAccount);
+        var message = data.activity.message || '';
+        message = message.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+        if (data.pet.state === 'missing_asset') message = '新宠物素材尚未同步';
+        show(data.activity.state, message, data);
     }
     root.DeskCompanion = {
         pet: pet,
-        resume: function () { if (active) return; active = true; pet.resume(); load(); },
+        update: update,
+        resume: function () { if (active) return; active = true; pet.resume(); },
         pause: function () {
-            active = false; pet.pause(); clearTimeout(refreshTimer); if (refreshRequest) { refreshRequest.abort(); refreshRequest = null; } clearTimeout(timer); clearTimeout(deadline);
-            var pending = request; request = null; if (pending) pending.abort();
+            active = false; pet.pause(); clearTimeout(refreshTimer); if (refreshRequest) { refreshRequest.abort(); refreshRequest = null; }
         }
     };
 }(this));
