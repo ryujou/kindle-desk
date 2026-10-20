@@ -4,6 +4,17 @@
 (function (root) {
     'use strict';
     var lines = {
+        carePat: ['老师，|这样有点不好意思呢。'],
+        carePatWait: ['老师的心意，|我已经收到啦。'],
+        careSnack: ['谢谢老师。|点心也一起分享吧。'],
+        careSnackWait: ['点心先留着，|一会儿再一起吃吧。'],
+        careRest: ['老师，|一起安静歇一会儿吧。'],
+        careWake: ['休息好了，|老师也伸个懒腰吧。'],
+        careReadError: ['陪伴存档无法读取，|原记录已保留。'],
+        careSaveError: ['保存失败，|请检查浏览器存储后重试。'],
+        tired: ['忙了一阵，|也该稍微歇一会儿啦。', '老师，|一起喝点热茶吧。'],
+        close: ['能陪老师一起，|平常的日子也很开心。', '下次的便当，|也想和老师一起分享。'],
+        quiet: ['夜深了，|老师也放慢脚步吧。', '安静陪着老师，|也很好呢。'],
         morning: [
             '老师，|早呀，|今天也一起加油。',
             '早上好，老师。|早餐也要记得吃。',
@@ -102,7 +113,7 @@
     }
     function create(random) {
         random = random || Math.random;
-        var current = null, expires = 0, greeted = {}, lastReminder = -Infinity;
+        var current = null, expires = 0, greeted = {}, lastReminder = -Infinity, lastMood;
         var lastRain = -Infinity, lastSitting = -Infinity, lastText = '', previousQuote = false;
         function pick(list) {
             var candidates = list.filter(function (line) { return (line.text || line) !== lastText; });
@@ -115,7 +126,7 @@
         function read(context, force) {
             var now = context.now, part = period(context.hour), key = context.day + ':' + part;
             var w = context.weather, rain = w && now - w.sampledAt >= 0 && now - w.sampledAt < 3600 && w.forecastRain === true;
-            if (current && now < expires && !force && !(current.kind === 'rain' && !rain) &&
+            if (current && lastMood === context.careMood && now < expires && !force && !(current.kind === 'rain' && !rain) &&
                     !(current.kind === 'sitting' && (context.away || context.sittingSeconds < 2700))) return current;
             var kind = 'daily', chosen, author = '';
             if (!force && !context.quoteOnly && now - lastReminder >= 2700) {
@@ -132,13 +143,15 @@
                     kind = 'quote';
                 }
             }
+            if (kind === 'daily' && lines[context.careMood]) kind = context.careMood;
             if (kind === 'quote') { chosen = pick(quotes); author = chosen.author; chosen = chosen.text; }
             else chosen = pick(lines[kind]);
-            lastText = chosen; previousQuote = kind === 'quote'; expires = now + 1200;
+            lastText = chosen; previousQuote = kind === 'quote'; expires = now + 1200; lastMood = context.careMood;
             current = {text: chosen, author: author, kind: kind};
             return current;
         }
         return {read: read};
     }
-    root.FuukaCompanion = {create: create, lines: lines, quotes: quotes, layout: layout, paint: paint};
+    function careEntry(kind) { return {text: lines[kind][0], kind: kind}; }
+    root.FuukaCompanion = {create: create, lines: lines, quotes: quotes, layout: layout, paint: paint, careEntry: careEntry};
 }(typeof module !== 'undefined' ? module.exports : this));

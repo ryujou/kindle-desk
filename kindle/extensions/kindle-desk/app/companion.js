@@ -7,6 +7,11 @@
     messageNode.onclick = function () { if (isStandby(currentActivity)) paintSpeech(true); };
     pet.setMode('native');
     pet.node.onclick = function () { pet.cycleAnimation(); };
+    var care = root.DeskCarePanel && !root.kindle ? new DeskCarePanel({pet: pet,
+        surface: document.getElementById('companion'), onChange: function () {
+            if (isStandby(currentActivity) || currentActivity && currentActivity.state === 'offline') paintSpeech(false);
+        }}) : null;
+    if (care) care.restorePet();
     pet.onDraw = function (row) {
         if (!window.kindle || !pet.nativeAsset || !active || refreshRequest) return;
         var r = pet.node.getBoundingClientRect();
@@ -65,7 +70,7 @@
     }
     function paintSpeech(force) {
         var now = Date.now() / 1000, date = new Date(), environment = currentEnvironment || {}, presence = environment.presence || {};
-        var entry = speech.read({now: now, hour: date.getHours(),
+        var entry = care && care.entry() || speech.read({now: now, hour: date.getHours(), careMood: care ? care.mood() : null,
             day: date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate(),
             sittingSeconds: presence.sittingSeconds || 0, away: presence.away === true, weather: environment.weather}, force);
         FuukaCompanion.paint(messageNode, entry);
@@ -89,7 +94,8 @@
     function show(state, message, data) {
         currentActivity = data ? data.activity : {state: state};
         currentEnvironment = data ? data.environment : null;
-        var idle = isStandby(currentActivity);
+        var idle = isStandby(currentActivity) || !!care && state === 'offline';
+        if (care) care.context(idle);
         document.getElementById('companion').className = idle ? 'standby' : '';
         document.getElementById('ambient-info').hidden = !idle;
         pet.setState(idle ? 'idle' : state); pet.setAmbient(idle);
@@ -114,6 +120,7 @@
             try {
                 var data = JSON.parse(xhr.responseText);
                 if (!data.pet || !data.activity) { done(false); return; }
+                if (care) care.observePet(data.pet);
                 pet.setPet(data.pet);
                 renderOther(data.otherAccount);
                 var message = data.activity.message || '';
@@ -128,8 +135,10 @@
     }
     root.DeskCompanion = {
         pet: pet,
-        resume: function () { if (active) return; active = true; pet.resume(); load(); },
+        care: care,
+        resume: function () { if (active) return; active = true; if (care) care.resume(); pet.resume(); load(); },
         pause: function () {
+            if (care) care.pause();
             active = false; pet.pause(); clearTimeout(refreshTimer); if (refreshRequest) { refreshRequest.abort(); refreshRequest = null; } clearTimeout(timer); clearTimeout(deadline);
             var pending = request; request = null; if (pending) pending.abort();
         }

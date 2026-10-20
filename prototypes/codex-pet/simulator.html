@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kindle 仪表伴侣 · 动态仿真</title><link rel="stylesheet" href="simulator.css"><link rel="stylesheet" href="/shared/care.css"></head>
+<body><main class="shell">
+<h1>仪表伴侣 · 动态仿真</h1>
+<p class="sub subtitle">待机时陪你休息，任务开始后显示 Codex 进度。本机实时模式读取净化器传感器与当地天气；模拟场景用于预览。</p>
+<nav class="sim-controls" aria-label="仿真设置">
+<label>数据<select id="source"><option value="live" selected>本机实时</option><option value="demo">模拟场景</option></select></label>
+<label>动画<select id="motion"><option value="native" selected>Codex 原生节奏</option><option value="eink">墨水屏 · 约 2 帧/秒</option><option value="still">静止对照</option></select></label>
+<label>状态<select id="state"><option value="idle" selected>待机伴侣</option><option value="none">没有会话</option><option value="stale">长期闲置</option><option value="waiting">等你操作</option><option value="running">工作中</option><option value="review">完成待查看</option><option value="failed">失败</option><option value="offline">离线</option><option value="long">长消息</option></select></label>
+<label>账号<select id="plan"><option value="plus">Plus</option><option value="pro">Pro</option></select></label>
+<label>返回周期<select id="periods"><option value="both">5 小时＋每周</option><option value="week">仅每周</option><option value="five">仅 5 小时</option><option value="none">没有周期</option></select></label>
+<button id="sleep">模拟休眠</button>
+<label><input id="weather-enabled" type="checkbox" checked>显示天气</label>
+<button id="locate">获取电脑位置</button>
+<button id="advance">快进 20 分钟</button>
+<button id="wave">让宠物挥手</button>
+<label>对白情境<select id="ambient-scene"><option value="auto">跟随时间</option><option value="daily">日常对白</option><option value="quote">精选一言</option><option value="morning">早晨</option><option value="lunch">午饭时间</option><option value="evening">晚上</option><option value="night">深夜</option><option value="sitting">久坐</option><option value="rain">预报有雨</option></select></label>
+<button id="next-line">换一句</button>
+<label>陪伴时间<select id="care-time"><option value="86400">一天</option><option value="604800">一周</option><option value="-3600">时钟倒退一小时</option></select></label><button id="care-advance">测试时间</button>
+<output id="care-values" aria-live="polite"></output>
+</nav>
+<div class="viewport"><section id="screen" class="screen instrument" aria-label="Kindle 仪表伴侣仿真">
+<div class="native"><span id="native-time">下午 04:42</span><svg class="handle" width="70" height="15" viewBox="0 0 70 15" aria-hidden="true"><path d="M3 3 L35 10 L67 3" fill="none" stroke="currentColor" stroke-width="4"/></svg><span>87%</span></div>
+<header class="screen-head"><strong>DESK / 桌面</strong><div class="head-right"><span id="connection">正在连接</span><button id="reading">返回阅读</button></div></header>
+<div class="content"><div class="clock" id="clock"></div><div class="work"><div id="metrics"></div><section class="companion" aria-label="Codex 宠物和消息"><div id="pet" class="pet" role="img" aria-label="Fuuka"></div><div class="bubble"><div class="bubble-head"><strong id="activity-state">正在连接</strong><span id="task-name">Codex</span></div><p id="activity-text" class="bubble-text" tabindex="0">正在读取本机消息。</p><div id="ambient-info" hidden>
+<div id="ambient-indoor" class="indoor" aria-label="室内环境读数">
+<div class="environment-reading"><div><strong id="room-temperature">—</strong><span class="reading-unit">°C</span></div><span class="reading-label">室温</span></div>
+<div class="environment-reading"><div><strong id="room-humidity">—</strong><span class="reading-unit">%</span></div><span class="reading-label">湿度</span></div>
+<div class="environment-reading"><div><strong id="room-pm25">—</strong><span class="reading-unit particle-unit">μg/m³</span></div><span class="reading-label">PM2.5</span></div>
+</div>
+<div id="weather-line" class="weather-line"><svg id="weather-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="M8 24h16a5 5 0 0 0 0-10h-1a8 8 0 0 0-15 2 4 4 0 0 0 0 8Z"/></svg><span id="weather-primary"></span><small id="weather-meta"></small></div>
+</div></div></section></div></div>
+<footer class="quota"><div class="quota-heading"><strong>Codex <small id="account-plan"></small></strong><span id="quota-state"></span></div><div class="quota-list" id="quota-list"></div></footer>
+<div class="screen-foot"><span id="data-label"></span><button id="refresh">刷新数据</button></div>
+<div class="readback" id="paused" hidden><h2 id="pause-title">已暂停</h2><p>动画与数据轮询已停止。</p><button id="resume">继续仿真</button></div>
+</section></div>
+<div class="note"><p id="status" role="status">连接中…</p><p><span id="pet-selection">正在读取电脑宠物选择</span><br>风香对白为依人设创作的原创短句。<br>短按人物切换动作 · 长按人物照料 · 点击短句换一句<br>陪伴存档仅保存在此浏览器，预览端口各自独立。</p></div>
+</main><script src="/shared/model.js"></script><script src="/shared/pet.js"></script><script src="/shared/standby.js"></script><script src="/shared/care.js"></script><script src="/shared/care-panel.js"></script><script src="simulator.js"></script></body></html>

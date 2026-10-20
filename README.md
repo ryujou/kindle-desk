@@ -425,6 +425,12 @@ Start-Service KindleDesk
 
 Kindle 更新前先返回阅读，覆盖 `extensions/kindle-desk` 中对应程序文件并保留配置；打开 Setup 检查工具后重新启动。卸载时先退出仪表盘，打开书库的 **Kindle Desk Uninstall** 清理应用注册与运行目录，再通过 USB 删除本项目的 `extensions/kindle-desk` 和 `documents/KindleDesk*.sh`。这不会卸载越狱、KOReader 或原生书籍。
 
+## 电子宠物实验分支
+
+`feature/electronic-pet` 提供 PC 养成仿真：长按人物打开摸摸头、送点心、一起休息，短按保留动作轮换；浏览器独立保存陪伴记录并支持离线恢复。数值与时间快进仅用于仿真，Kindle 养成尚未启用。
+
+运行 `python tests/preview_server.py` 后打开 `http://127.0.0.1:18767/preview`，使用合成数据体验；运行 `python prototypes/codex-pet/server.py` 后打开 `http://127.0.0.1:18770/simulator.html`，选择模拟场景或读取已配置的本机服务。两个端口的存档相互独立。宠物沿用本地 `app/pets/manifest.json` 和 PNG 图集，按下文方式配置，原始素材不随源码分发。动态仿真的实际进度来自本机服务已配置的会话。
+
 ## 工程入口
 
 | 文件 | 内容 |

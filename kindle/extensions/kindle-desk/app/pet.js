@@ -13,6 +13,7 @@
         if (root.kindle) { node.style.webkitFilter = 'none'; node.style.filter = 'none'; }
         this.node = node; this.state = 'idle'; this.frame = 0; this.draws = 0;
         this.reactionRow = null; this.reactionLoops = 0; this.nextReaction = 0;
+        this.once = false; this.resting = false;
         this.mode = 'native'; this.timer = null; this.enabled = false;
         this.atlasRows = 11; this.name = 'Fuuka'; this.petId = null; this.loadingId = null;
         this.ambient = false; this.nextAmbientWave = Date.now() + 120000;
@@ -29,14 +30,16 @@
         this.node.style.backgroundPosition = (this.frame * 100 / 7) + '% ' + (row * 100 / (this.atlasRows - 1)) + '%';
         this.node.setAttribute('data-frame', String(this.frame));
         this.node.setAttribute('data-state', this.state);
+        this.node.setAttribute('data-row', String(row));
+        this.node.setAttribute('data-animation', this.reactionRow === 3 ? 'wave' : this.reactionRow !== null ? 'action' : this.resting ? 'resting' : this.ambient ? 'ambient' : this.state);
         this.node.setAttribute('aria-label', this.name + ' · ' + this.state);
         this.draws++;
         if (this.onDraw) this.onDraw();
     };
     Pet.prototype.schedule = function () {
         var self = this, row = this.currentRow();
-        clearTimeout(this.timer);
-        if (!this.enabled || document.hidden || this.node.style.visibility === 'hidden' || this.mode === 'still' || (this.state === 'offline' && this.reactionRow === null)) return;
+        clearTimeout(this.timer); this.timer = null;
+        if (!this.enabled || document.hidden || this.node.style.visibility === 'hidden' || this.mode === 'still' || ((this.resting || this.state === 'offline') && this.reactionRow === null)) return;
         this.timer = setTimeout(function () {
             if (self.ambient && self.reactionRow === null && Date.now() >= self.nextAmbientWave) {
                 self.reactionRow = 3; self.reactionLoops = 1; self.frame = 0;
@@ -44,9 +47,9 @@
                 self.draw(); self.schedule(); return;
             }
             self.frame = (self.frame + 1) % timings[row].length;
-            if (self.frame === 0 && self.reactionRow !== null && --self.reactionLoops === 0) self.reactionRow = null;
+            if (self.frame === 0 && self.reactionRow !== null && --self.reactionLoops === 0) { self.reactionRow = null; self.once = false; }
             self.draw(); self.schedule();
-        }, this.ambient ? (this.reactionRow === null ? 2000 : 500) : this.mode === 'eink' ? Math.max(500, timings[row][this.frame] * 3) : timings[row][this.frame]);
+        }, this.once ? timings[row][this.frame] : this.ambient ? (this.reactionRow === null ? 2000 : 500) : this.mode === 'eink' ? Math.max(500, timings[row][this.frame] * 3) : timings[row][this.frame]);
     };
     Pet.prototype.setAmbient = function (value) {
         if (this.ambient === value) return;
@@ -65,8 +68,24 @@
         this.reactionRow = actions[this.nextReaction];
         this.nextReaction = (this.nextReaction + 1) % actions.length;
         this.reactionLoops = 3; this.frame = 0;
+        this.once = false;
         this.draw(); this.schedule();
     };
+    Pet.prototype.playOnce = function (row) {
+        if (!this.enabled || !this.petId || this.reactionRow !== null || this.node.style.visibility === 'hidden') return false;
+        this.reactionRow = row; this.reactionLoops = 1; this.once = true; this.frame = 0;
+        this.draw(); this.schedule(); return true;
+    };
+    Pet.prototype.cancelReaction = function () {
+        if (this.reactionRow === null) return;
+        this.reactionRow = null; this.once = false; this.frame = 0; this.draw(); this.schedule();
+    };
+    Pet.prototype.setResting = function (value) {
+        value = !!value; if (value === this.resting) return;
+        this.resting = value; this.frame = 0; this.draw(); this.schedule();
+    };
+    Pet.prototype.wave = function () { return this.playOnce(3); };
+    Pet.prototype.row = Pet.prototype.currentRow;
     Pet.prototype.setMode = function (mode) { this.mode = mode; this.schedule(); };
     Pet.prototype.setPet = function (value) {
         var self = this;
@@ -94,6 +113,6 @@
         image.src = value.url;
     };
     Pet.prototype.resume = function () { this.enabled = true; this.schedule(); };
-    Pet.prototype.pause = function () { this.enabled = false; this.reactionRow = null; clearTimeout(this.timer); this.timer = null; };
+    Pet.prototype.pause = function () { this.enabled = false; this.reactionRow = null; this.once = false; clearTimeout(this.timer); this.timer = null; };
     root.DeskPet = Pet;
 }(this));

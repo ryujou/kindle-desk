@@ -1,0 +1,13 @@
+.care-menu{position:absolute;left:166px;right:0;top:14px;min-height:188px;padding:4px 12px;background:#fff;border:1px solid #111;z-index:2;font-family:inherit}
+.care-menu[hidden]{display:none}
+.care-menu button{display:block;width:100%;min-height:44px;padding:7px 4px;text-align:left;font-size:20px;border:0;border-bottom:1px solid #aaa;border-radius:0;background:#fff;color:#111}
+.care-menu button:hover,.care-menu button:focus-visible{background:#eee;outline:2px solid #111;outline-offset:-2px}
+.care-menu button:disabled{color:#666;cursor:default}
+.care-menu button.care-close{min-height:38px;border-bottom:0;text-align:right;font-size:16px}
+.care-menu p{font-size:16px;line-height:1.4;margin:6px 0}
+.care-menu p:empty{display:none}
+.companion{position:relative}
+.instrument .companion .care-menu{left:170px;top:16px}
+.screen .care-menu button{min-height:44px;padding:7px 4px;font-size:20px}
+.screen .care-menu button.care-close{min-height:38px;font-size:16px}
+#pet{touch-action:manipulation;-webkit-user-select:none;user-select:none}

@@ -62,13 +62,42 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         global SCENARIO
         target = urlparse(self.path)
-        if target.path == '/scenario':
+        if target.path in ('/', '/index.html'):
+            data = (APP / 'index.html').read_text(encoding='utf-8')
+            data = data.replace('</head>', '<link rel="stylesheet" href="care.css"></head>')
+            data = data.replace('<script src="companion.js">', '<script src="care.js"></script><script src="care-panel.js"></script><script src="companion.js">')
+            body = data.encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        elif target.path == '/scenario':
             name = parse_qs(target.query).get('name', ['plus'])[0]
-            if name not in ('plus', 'pro', 'switching', 'mismatch', 'signed_out', 'offline', 'stale', 'reset', 'single', 'multi', 'low', 'invalid'):
+            if name not in ('plus', 'pro', 'switching', 'mismatch', 'signed_out', 'offline', 'stale', 'reset', 'single', 'multi', 'low', 'invalid', 'running', 'waiting', 'failed', 'pet_off'):
                 self.json({'error': 'unknown scenario'}, 400)
                 return
             SCENARIO = name
             self.json({'scenario': SCENARIO})
+        elif target.path == '/cgi-bin/quota-refresh.sh':
+            self.json({'ok': True, 'pending': False, 'simulated': True})
+        elif target.path == '/cgi-bin/companion.sh':
+            if SCENARIO == 'offline':
+                self.json({'error': 'offline'}, 503)
+                return
+            # Only installed local art is used; no account or pet-selection service is contacted.
+            manifest_file = APP / 'pets/manifest.json'
+            manifest = json.loads(manifest_file.read_text(encoding='utf-8')) if manifest_file.exists() else {}
+            asset = next((value for value in manifest.values() if value['name'] == 'Fuuka' and (APP / value['url']).exists()), None)
+            pet = dict(state='ready', id='preview-fuuka', name=asset['name'], url=asset['url'], rows=asset['rows']) if asset else dict(state='missing_asset')
+            if SCENARIO == 'pet_off':
+                pet = dict(state='off')
+            state = SCENARIO if SCENARIO in ('running', 'waiting', 'failed') else 'idle'
+            messages = dict(running='正在检查界面与本地陪伴功能。', waiting='请在电脑端确认当前操作。', failed='任务遇到问题，请在电脑端查看。', idle='')
+            stamp = int(time.time())
+            self.json(dict(pet=pet, activity=dict(state=state, message=messages[state], eventAt=stamp),
+                environment=dict(indoor=dict(temperature=24, humidity=65, pm25=45),
+                                 weather=dict(temperature=22, code=2, sampledAt=stamp)), otherAccount=sample('pro')['codex']))
         elif target.path == '/cgi-bin/snapshot.sh':
             if SCENARIO == 'offline':
                 self.json({'error': 'offline'})
@@ -76,13 +105,6 @@ class Handler(SimpleHTTPRequestHandler):
                 self.json({'schemaVersion': 99})
             else:
                 self.json(sample(SCENARIO))
-        elif target.path == '/cgi-bin/quota-refresh.sh':
-            self.json({'id': 1, 'pending': False})
-        elif target.path == '/cgi-bin/companion.sh':
-            self.json({'pet': {'state': 'off'}, 'activity': {'state': 'idle', 'message': ''}, 'otherAccount': sample('pro')['codex'],
-                       'environment': {'presence': {'sittingSeconds': 0, 'away': False},
-                                       'indoor': {'temperature': 24, 'humidity': 65, 'pm25': 45, 'sampledAt': int(time.time())},
-                                       'weather': {'temperature': 22, 'code': 3, 'forecastRain': False, 'sampledAt': int(time.time())}}})
         elif target.path == '/preview':
             data = (Path(__file__).parent / 'preview.html').read_bytes()
             self.send_response(200)
@@ -93,7 +115,7 @@ class Handler(SimpleHTTPRequestHandler):
             super().do_GET()
 
     def do_POST(self):
-        self.json({'ok': self.path in ('/cgi-bin/exit.sh', '/cgi-bin/refresh.sh', '/cgi-bin/quota-refresh.sh'), 'simulated': True})
+        self.json({'ok': self.path in ('/cgi-bin/exit.sh', '/cgi-bin/refresh.sh', '/cgi-bin/quota-refresh.sh'), 'pending': False, 'simulated': True})
 
 
 if __name__ == '__main__':
