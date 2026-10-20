@@ -14,7 +14,8 @@
         this.node = node; this.state = 'idle'; this.frame = 0; this.draws = 0;
         this.reactionRow = null; this.reactionLoops = 0; this.nextReaction = 0;
         this.mode = 'native'; this.timer = null; this.enabled = false;
-        this.atlasRows = 11; this.name = 'Pet'; this.petId = null; this.loadingId = null;
+        this.atlasRows = 11; this.name = 'Fuuka'; this.petId = null; this.loadingId = null;
+        this.ambient = false; this.nextAmbientWave = Date.now() + 120000;
     }
     Pet.prototype.currentRow = function () {
         return this.reactionRow !== null ? this.reactionRow : (rows[this.state] === undefined ? 0 : rows[this.state]);
@@ -37,10 +38,20 @@
         clearTimeout(this.timer);
         if (!this.enabled || document.hidden || this.node.style.visibility === 'hidden' || this.mode === 'still' || (this.state === 'offline' && this.reactionRow === null)) return;
         this.timer = setTimeout(function () {
+            if (self.ambient && self.reactionRow === null && Date.now() >= self.nextAmbientWave) {
+                self.reactionRow = 3; self.reactionLoops = 1; self.frame = 0;
+                self.nextAmbientWave = Date.now() + 120000;
+                self.draw(); self.schedule(); return;
+            }
             self.frame = (self.frame + 1) % timings[row].length;
             if (self.frame === 0 && self.reactionRow !== null && --self.reactionLoops === 0) self.reactionRow = null;
             self.draw(); self.schedule();
-        }, this.mode === 'eink' ? Math.max(500, timings[row][this.frame] * 3) : timings[row][this.frame]);
+        }, this.ambient ? (this.reactionRow === null ? 2000 : 500) : this.mode === 'eink' ? Math.max(500, timings[row][this.frame] * 3) : timings[row][this.frame]);
+    };
+    Pet.prototype.setAmbient = function (value) {
+        if (this.ambient === value) return;
+        this.ambient = value; this.nextAmbientWave = Date.now() + 120000;
+        this.schedule();
     };
     Pet.prototype.setState = function (state) {
         if (state === this.state) return;

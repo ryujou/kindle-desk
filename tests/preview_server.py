@@ -79,7 +79,10 @@ class Handler(SimpleHTTPRequestHandler):
         elif target.path == '/cgi-bin/quota-refresh.sh':
             self.json({'id': 1, 'pending': False})
         elif target.path == '/cgi-bin/companion.sh':
-            self.json({'pet': {'state': 'off'}, 'activity': {'state': 'idle', 'message': '演示数据：未加载宠物素材'}, 'otherAccount': sample('pro')['codex']})
+            self.json({'pet': {'state': 'off'}, 'activity': {'state': 'idle', 'message': ''}, 'otherAccount': sample('pro')['codex'],
+                       'environment': {'presence': {'sittingSeconds': 0, 'away': False},
+                                       'indoor': {'temperature': 24, 'humidity': 65, 'pm25': 45, 'sampledAt': int(time.time())},
+                                       'weather': {'temperature': 22, 'code': 3, 'forecastRain': False, 'sampledAt': int(time.time())}}})
         elif target.path == '/preview':
             data = (Path(__file__).parent / 'preview.html').read_bytes()
             self.send_response(200)

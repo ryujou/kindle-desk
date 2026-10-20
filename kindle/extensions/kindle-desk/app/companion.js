@@ -2,6 +2,9 @@
     'use strict';
     var pet = new DeskPet(document.getElementById('pet')), active = false, timer, deadline, request, refreshTimer, refreshRequest;
     var labels = {idle: '休息中', running: '进行中', waiting: '需要你确认', review: '已完成', failed: '遇到问题', unknown: '等待状态', offline: '电脑未连接'};
+    var speech = FuukaCompanion.create(), currentActivity, currentEnvironment;
+    var messageNode = document.getElementById('pet-message');
+    messageNode.onclick = function () { if (isStandby(currentActivity)) paintSpeech(true); };
     pet.setMode('native');
     pet.node.onclick = function () { pet.cycleAnimation(); };
     pet.onDraw = function (row) {
@@ -55,8 +58,42 @@
             add(box, 'div', 'quota-reset', reset); parent.appendChild(box);
         }
     }
-    function show(state, message) {
-        pet.setState(state);
+    function isStandby(activity) {
+        if (!activity) return false;
+        if (activity.state === 'idle' || activity.state === 'unknown') return true;
+        return activity.state === 'review' && activity.eventAt && Date.now() / 1000 - activity.eventAt >= 60;
+    }
+    function paintSpeech(force) {
+        var now = Date.now() / 1000, date = new Date(), environment = currentEnvironment || {}, presence = environment.presence || {};
+        var entry = speech.read({now: now, hour: date.getHours(),
+            day: date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate(),
+            sittingSeconds: presence.sittingSeconds || 0, away: presence.away === true, weather: environment.weather}, force);
+        FuukaCompanion.paint(messageNode, entry);
+    }
+    function showEnvironment() {
+        var environment = currentEnvironment || {}, indoor = environment.indoor, weather = environment.weather;
+        document.getElementById('ambient-indoor').hidden = !indoor;
+        if (indoor) {
+            document.getElementById('room-temperature').textContent = Math.round(indoor.temperature);
+            document.getElementById('room-humidity').textContent = Math.round(indoor.humidity);
+            document.getElementById('room-pm25').textContent = Math.round(indoor.pm25);
+        }
+        var visible = weather && Date.now() / 1000 - weather.sampledAt < 3600;
+        document.getElementById('ambient-weather').hidden = !visible;
+        if (visible) {
+            var code = weather.code, label = code === 0 ? '晴' : code <= 3 ? '多云' : code <= 48 ? '有雾' :
+                code <= 67 ? '有雨' : code <= 77 ? '有雪' : code <= 82 ? '阵雨' : code <= 86 ? '阵雪' : '雷雨';
+            document.getElementById('outdoor-weather').textContent = Math.round(weather.temperature) + '°C · ' + label;
+        }
+    }
+    function show(state, message, data) {
+        currentActivity = data ? data.activity : {state: state};
+        currentEnvironment = data ? data.environment : null;
+        var idle = isStandby(currentActivity);
+        document.getElementById('companion').className = idle ? 'standby' : '';
+        document.getElementById('ambient-info').hidden = !idle;
+        pet.setState(idle ? 'idle' : state); pet.setAmbient(idle);
+        if (idle) { showEnvironment(); paintSpeech(false); return; }
         var label = document.getElementById('pet-state'), bubble = document.getElementById('pet-message');
         if (label.textContent !== labels[state]) label.textContent = labels[state] || labels.unknown;
         if (bubble.textContent !== message) { bubble.textContent = message; bubble.scrollTop = 0; }
@@ -82,7 +119,7 @@
                 var message = data.activity.message || '';
                 message = message.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
                 if (data.pet.state === 'missing_asset') message = '新宠物素材尚未同步';
-                show(data.activity.state, message);
+                show(data.activity.state, message, data);
                 done(true);
             } catch (error) { done(false); }
         };

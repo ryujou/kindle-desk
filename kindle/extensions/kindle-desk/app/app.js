@@ -151,8 +151,8 @@
         xhr.send(null);
     }
     function tick() { if (!active) return; updateClock(); render(); clockTimer = setTimeout(tick, 60000 - new Date().getTime() % 60000 + 20); }
-    function pause() { clearTimeout(manualTimer); manualUntil = 0; var manual = manualRequest; manualRequest = null; if (manual) manual.abort(); text('refresh', '刷新数据'); DeskCompanion.pause(); active = false; clearTimeout(clockTimer); clearTimeout(pollTimer); clearTimeout(deadline); clearTimeout(fullTimer); clearTimeout(fullDebounce); var pending = request; request = null; if (pending) pending.abort(); var repaint = fullRequest; fullRequest = null; if (repaint) repaint.abort(); el('refresh').disabled = manualUntil > 0; }
-    function enter() { if (active) return; active = true; DeskCompanion.resume(); snapshot = null; el('closed').hidden = true; fit(); tick(); load(); queueFullRefresh(); }
+    function pause() { if (window.kindle && window.kindle.device && typeof window.kindle.device.setSensitivity === 'function') window.kindle.device.setSensitivity(false); clearTimeout(manualTimer); manualUntil = 0; var manual = manualRequest; manualRequest = null; if (manual) manual.abort(); text('refresh', '刷新数据'); DeskCompanion.pause(); active = false; clearTimeout(clockTimer); clearTimeout(pollTimer); clearTimeout(deadline); clearTimeout(fullTimer); clearTimeout(fullDebounce); var pending = request; request = null; if (pending) pending.abort(); var repaint = fullRequest; fullRequest = null; if (repaint) repaint.abort(); el('refresh').disabled = manualUntil > 0; }
+    function enter() { if (active) return; if (window.kindle && window.kindle.device && typeof window.kindle.device.setSensitivity === 'function') window.kindle.device.setSensitivity(false); active = true; DeskCompanion.resume(); snapshot = null; el('closed').hidden = true; fit(); tick(); load(); queueFullRefresh(); }
     el('next').onclick = function () { var count = Math.max(1, Math.ceil(DeskModel.derive(snapshot, now()).rows.length / 2)); page = (page + 1) % count; render(); queueFullRefresh(); };
     el('refresh').onclick = manualRefresh;
     el('clean').onclick = fullRefresh;

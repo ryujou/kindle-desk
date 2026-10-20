@@ -23,7 +23,7 @@
 
 Kindle 原系统 + HTML / CSS / ES5 JavaScript，Windows 端使用 Python 标准库和 .NET Framework 服务宿主。
 
-横屏显示指针时钟、电脑性能、Codex 额度和宠物伴侣。点击“返回阅读”回到原生书库，保留 Kindle 的阅读功能。时钟按分钟更新；宠物沿用图集的原生帧时长，以加深的 Floyd–Steinberg 点阵配合 FBInk A2 局部刷新。点击人物依次播放挥手、跳跃、向右跑、向左跑，每个动作播放 3 遍后恢复跟随 Codex 状态。
+横屏显示指针时钟、电脑性能、Codex 额度和宠物伴侣。点击“返回阅读”回到原生书库，保留 Kindle 的阅读功能。时钟按分钟更新；任务期间宠物沿用图集的原生帧时长，以加深的 Floyd–Steinberg 点阵配合 FBInk A2 局部刷新。闲置时显示日常对白、一言和可选环境读数，宠物低频活动。点击人物依次播放挥手、跳跃、向右跑、向左跑，每个动作播放 3 遍后恢复跟随 Codex 状态。
 
 实机开发环境为 **Kindle Paperwhite 4（第 10 代）、固件 5.16.7**。其他型号或固件需要分别确认越狱、Mesquite 和 FBInk 兼容性，不能仅凭分辨率相同判断可用。电脑端面向 Windows 10/11，使用 Python 3.12 和 PowerShell 7。
 
@@ -36,6 +36,8 @@ Kindle 原系统 + HTML / CSS / ES5 JavaScript，Windows 端使用 Python 标准
 | 当前账号 | Codex app-server 返回的套餐与剩余额度 |
 | 第二账号 | CC Switch 中另一个 OAuth 账号的剩余额度 |
 | 宠物 | 跟随电脑当前账号的宠物选择，A2 点阵动画，点击切换动作 |
+| 闲置显示 | 风香原创对白、精选一言与早晚、久坐、降雨提醒；短句按语义换行 |
+| 环境读数 | 可选 Open-Meteo 当地天气、小米空气净化器 2 的本地温湿度和 PM2.5 |
 | 进度气泡 | 指定 Codex 会话的公开进度、完成状态及部分待回答问题 |
 
 Plus、Pro 使用相同的排版和数据规则：有 5 小时窗口就显示 5 小时，有每周窗口就显示每周；没有返回的窗口不补造。剩余量为 `100 − usedPercent`，到达重置时间后等待真实新数据，不直接显示 100%。
@@ -113,7 +115,7 @@ python ./tests/preview_server.py
 
 打开 `http://127.0.0.1:18767/preview`。页面使用正式 Kindle 前端，可切换 Plus、Pro、离线、过期、切换账号和额度重置等模拟场景。退出与刷新操作在浏览器中模拟，不操作实体设备。
 
-Python 数据服务只使用标准库，无需 `pip install`；可选的宠物帧生成工具需要 Pillow。预览不读取本地登录文件；未提供宠物素材时只显示气泡和仪表。
+Python 数据服务的基础功能只使用标准库；可选的小米本地采集需要 `cryptography`，宠物帧生成工具需要 Pillow。预览不读取本地登录文件；未提供宠物素材时只显示文字和仪表，环境读数使用合成数据。
 
 ## Windows 数据服务
 
@@ -312,6 +314,50 @@ Start-ScheduledTask KindleDesk-Codex
 
 点击“刷新数据”会请求两个账号立即重新查询额度，按钮显示“查询额度…”；完成后重新读取显示数据。查询期间重复点击不会叠加请求，超时或连接失败会提示。性能、额度和宠物帧率各自独立，降低动画帧率不会提高额度更新速度。
 
+## 待机对白与环境读数
+
+没有任务或已完成任务超过一分钟时，显示爱清风香人设的 42 条原创同人对白与 8 条精选古诗文。短句约每 20 分钟轮换，也可以点击换一句；按语义分成一至两行，文字区固定留位，环境读数保持稳定。作者不显示。早晨、午饭、晚上、深夜、久坐和降雨预报会影响对白选择；任务开始或需要确认时优先显示 Codex 公开消息。
+
+久坐提醒使用电脑端的 Windows 输入闲置时长估算，不记录按键内容，也不是人体坐姿检测。连续五分钟没有输入视为离开，重置计时。普通待机动画约每两秒一帧，偶尔挥手。
+
+环境配置保存在运行采集任务的 Windows 用户目录 `%USERPROFILE%\.codex\kindle-desk\`，与源码分开。两项均可选，未配置或读取失败时隐藏对应读数。
+
+### 当地天气
+
+创建 `environment.json`，填写需要查询地点的纬度和经度。可在 PowerShell 7 中执行：
+
+```powershell
+$settings = Join-Path $env:USERPROFILE '.codex\kindle-desk'
+New-Item -ItemType Directory -Path $settings -Force | Out-Null
+@{
+  latitude = [double](Read-Host '纬度')
+  longitude = [double](Read-Host '经度')
+} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $settings 'environment.json') -Encoding utf8
+```
+
+采集器每 30 分钟通过 [Open-Meteo](https://open-meteo.com/en/docs) 查询当前室外温度、天气和未来六小时降雨信息。接口会接收配置的经纬度；它不是室内传感器读数。配置由采集任务定期重新读取，无需重启 Windows 系统服务。
+
+### 小米空气净化器 2
+
+已验证型号为 `zhimi.airpurifier.m2`，通过局域网 UDP 54321 的 MiIO 协议只读取 `temp_dec`、`humidity`、`aqi`，不发送开关或模式控制命令。其他型号需核对属性协议。
+
+在运行采集任务的同一 Python 环境中安装加密依赖：
+
+```powershell
+python -m pip install cryptography
+```
+
+按 [python-miio 的设备发现与 token 说明](https://python-miio.readthedocs.io/en/latest/discovery.html) 查找设备 IP 和 token。在上述用户配置目录创建 `purifier.json`；以下 IP 和 token 均为占位，必须替换为自己的设备信息：
+
+```json
+{
+  "ip": "192.168.1.50",
+  "token": "填写设备的32位十六进制token"
+}
+```
+
+净化器每分钟采集一次。token 仅用于电脑与设备之间的通信，不发送给 Kindle，也不随源码提交。设备 IP 改变时需更新配置。
+
 ## 墨水屏刷新与休眠
 
 普通文字和指标只更新变化部分，由 Mesquite 管理页面重绘。宠物通过 `pet-draw.sh` 把准备好的黑白帧直接写入帧缓冲，以 FBInk `A2` 更新人物矩形，动画请求不带反色清屏标志。页面保持默认刷新灵敏度；每 10 分钟、进入页面或切换额度账号等布局变化时请求全刷，也可以点击“清除残影”。
@@ -391,6 +437,8 @@ Kindle 更新前先返回阅读，覆盖 `extensions/kindle-desk` 中对应程�
 | `pc/ccswitch_quota.py` | CC Switch 第二账号额度 |
 | `pc/pet_selection.py` | 按当前账号匹配本地宠物选择 |
 | `pc/pet_activity.py` | 指定会话公开消息解析 |
+| `pc/environment.py` | 输入闲置时长、室外天气与 MiIO 室内传感器采集 |
+| `kindle/extensions/kindle-desk/app/standby.js` | 风香对白、一言、情境提醒与语义换行 |
 | `pc/ServiceHost.cs`、`pc/manage.ps1` | Windows 服务宿主与管理 |
 | `tests/preview_server.py` | 无登录的模拟预览 |
 | `tools/prepare-device.ps1` | 下载设备 HTTP 工具 |
@@ -403,6 +451,7 @@ Kindle 更新前先返回阅读，覆盖 `extensions/kindle-desk` 中对应程�
 python -m unittest discover -s tests -p '*_test.py'
 node ./tests/model.test.cjs
 node ./tests/pet.test.cjs
+node ./tests/standby.test.cjs
 ```
 
 测试使用合成数据，覆盖账号切换、额度归属、HTTP 摘要、公开消息过滤、动画时长和点击动作恢复，不修改真实登录。Node.js 只用于前端模型测试，运行正式服务不需要 Node.js。

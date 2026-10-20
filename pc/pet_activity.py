@@ -1,5 +1,6 @@
 """Read public Codex rollout activity; never forward reasoning or tool output."""
 import json
+import re
 import time
 from datetime import datetime
 from pathlib import Path
@@ -26,7 +27,11 @@ class ActivityReader:
                 self.message = ''
             elif kind in ('task_complete', 'turn_complete'):
                 self.state = 'review'
-            elif kind in ('turn_aborted', 'task_failed'):
+            elif kind == 'turn_aborted':
+                self.state = 'idle'
+                self.message = ''
+                self.pending.clear()
+            elif kind == 'task_failed':
                 self.state = 'failed'
             return
         if record.get('type') != 'response_item':
@@ -60,6 +65,13 @@ class ActivityReader:
                 del self.pending[key]
 
     def read(self):
+        # Compaction continues the same thread in a new rollout file.
+        thread = re.search(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}', self.path.name)
+        if thread:
+            latest = max(self.path.parent.glob('*' + thread.group() + '*.jsonl'),
+                         key=lambda path: path.name, default=self.path)
+            if latest.name > self.path.name:
+                self.__init__(latest)
         with self.path.open('rb') as stream:
             stream.seek(self.offset)
             while True:

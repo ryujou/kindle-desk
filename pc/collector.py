@@ -256,7 +256,7 @@ def make_handler(state):
                 self.reply(dict(service='KindleDesk', computer=state.computer is not None,
                                 quotaState=state.snapshot()['codex']['state'],
                                 performanceError=state.performance_error, gpuError=state.gpu_error))
-            elif path in ('/', '/index.html', '/style.css', '/app.js', '/model.js', '/pet.js', '/companion.js'):
+            elif path in ('/', '/index.html', '/style.css', '/app.js', '/model.js', '/pet.js', '/companion.js', '/standby.js'):
                 filename = 'index.html' if path == '/' else path[1:]
                 mime = 'text/html' if filename.endswith('.html') else 'text/css' if filename.endswith('.css') else 'text/javascript'
                 self.body((APP / filename).read_bytes(), mime + '; charset=utf-8')
@@ -361,6 +361,7 @@ def wait_for_quota_refresh(port, worker, completed):
 
 
 def companion_worker(port, rollout=None):
+    from environment import EnvironmentReader, presence_status
     from ccswitch_quota import OtherAccountReader
     from pet_selection import selection
     from pet_activity import ActivityReader
@@ -379,13 +380,31 @@ def companion_worker(port, rollout=None):
                 other.next_fetch = 0
             refresh_id = requested
     threading.Thread(target=read_other, daemon=True).start()
+    environment = EnvironmentReader()
+    def read_environment():
+        while True:
+            try:
+                environment.poll()
+            except (OSError, ValueError, KeyError) as error:
+                environment.weather = None
+                if sys.stderr:
+                    print('Weather read failed: ' + type(error).__name__, file=sys.stderr, flush=True)
+            try:
+                environment.poll_indoor()
+            except (OSError, ValueError, KeyError) as error:
+                environment.indoor = None
+                if sys.stderr:
+                    print('Purifier read failed: ' + type(error).__name__, file=sys.stderr, flush=True)
+            time.sleep(60)
+    threading.Thread(target=read_environment, daemon=True).start()
     home = Path.home() / '.codex'
     activity = ActivityReader(rollout) if rollout else None
     manifest_path = APP / 'pets/manifest.json'
     manifest = json.loads(manifest_path.read_text(encoding='utf-8')) if manifest_path.exists() else {}
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     while True:
-        value = dict(pet=selection(home, manifest), activity=activity.read() if activity else dict(state='unknown', message=''), otherAccount=other.value)
+        value = dict(pet=selection(home, manifest), activity=activity.read() if activity else dict(state='unknown', message=''), otherAccount=other.value,
+                     environment=dict(presence=presence_status(), weather=environment.weather, indoor=environment.indoor))
         req = urllib.request.Request('http://127.0.0.1:%d/companion' % port,
                                      data=json.dumps(value).encode(), headers={'Content-Type': 'application/json'})
         try:

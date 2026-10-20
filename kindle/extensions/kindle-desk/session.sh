@@ -28,6 +28,8 @@ framework_uid=$(id -u framework)
 framework_gid=$(id -g framework)
 mkdir -p "$APP_ROOT/cgi-bin"
 cp "$BASE/app/index.html" "$BASE/app/style.css" "$BASE/app/model.js" "$BASE/app/app.js" "$BASE/app/pet.js" "$BASE/app/companion.js" "$BASE/app/config.xml" "$APP_ROOT/"
+cp "$BASE/app/standby.js" "$APP_ROOT/"
+chmod 0644 "$APP_ROOT/standby.js"
 mkdir -p "$APP_ROOT/pets"
 for image in "$BASE/app/pets/"*.png; do
     [ -f "$image" ] || continue
