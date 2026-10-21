@@ -49,10 +49,12 @@
         var model = DeskModel.derive(snapshot, now()), pc = model.computer, account = model.account;
         var key = account ? account.key : null;
         if (key !== accountKey) { accountKey = key; page = 0; quotaSignature = ''; queueFullRefresh(); }
-        text('connection', transportMessage === '电脑未配置' ? transportMessage : model.computerState);
+        text('connection', transportMessage && transportMessage.indexOf('演示') !== 0 ? '电脑离线' : model.computerState);
+        var old = pc && (!DeskDetails.fresh(pc.sampledAt, 45) || transportMessage && transportMessage.indexOf('演示') !== 0);
+        if (old) text('connection', (transportMessage && transportMessage.indexOf('演示') !== 0 ? '电脑离线 · ' : '电脑数据过期 · ') + DeskDetails.age(pc.sampledAt, 45).replace('已过期 · ', ''));
         metric('cpu', pc ? pc.cpu : null); metric('ram', pc ? pc.ram : null); metric('gpu', pc ? pc.gpu : null);
         text('memory', pc && pc.used !== null && pc.total !== null ? '内存 ' + pc.used.toFixed(1) + ' / ' + pc.total + ' GiB' : '内存 —');
-        text('temperature', pc && pc.temperature !== null ? '显卡 ' + Math.round(pc.temperature) + ' °C' : '显卡温度 —');
+        text('temperature', pc && pc.temperature !== null ? '显卡 ' + Math.round(pc.temperature) + ' ℃' : '显卡温度 —');
         text('plan', account ? account.plan : ''); text('account', account ? account.label : '账号未确认'); text('quota-state', model.quotaState);
         var totalPages = Math.max(1, Math.ceil(model.rows.length / 2)); page = Math.min(page, totalPages - 1);
         var rows = model.rows.slice(page * 2, page * 2 + 2), shape = [];
@@ -100,11 +102,12 @@
         clearTimeout(fullTimer); fullTimer = setTimeout(fullRefresh, FULL_REFRESH_MS);
     }
     function queueFullRefresh() { if (!active) return; clearTimeout(fullDebounce); fullDebounce = setTimeout(fullRefresh, 400); }
+    DeskDetails.onChange = queueFullRefresh;
     function finish(xhr, message) {
         if (request !== xhr) return;
         clearTimeout(deadline); request = null;
         if (el('refresh').disabled !== (manualUntil > 0)) el('refresh').disabled = manualUntil > 0;
-        if (message) { snapshot = null; panelUpdated = 0; transportMessage = message; DeskCompanion.update(null); render(); }
+        if (message) { panelUpdated = 0; transportMessage = message; DeskDetails.update(null, true); DeskCompanion.update(null); render(); }
         if (active) pollTimer = setTimeout(load, !message && !panelUpdated ? 0 : 3000);
     }
     function load() {
@@ -120,9 +123,12 @@
                 if (data.error) { finish(xhr, data.error === 'not_configured' ? '电脑未配置' : '电脑离线 · 等待重新连接'); return; }
                 if (data.schemaVersion !== 1) { finish(xhr, '电脑数据格式不支持'); return; }
                 if (includePanel && !('computer' in data)) { finish(xhr, '电脑数据格式不支持'); return; }
+                DeskDetails.update(data, false);
                 DeskCompanion.update(data.companion);
+                transportMessage = data.demo === true ? '演示数据 · 未接入真实账号' : '';
                 var stamp = new Date().getTime();
                 if (includePanel) {
+                    if (!data.computer && snapshot && snapshot.computer) data.computer = snapshot.computer;
                     snapshot = data; panelUpdated = stamp;
                     transportMessage = data.demo === true ? '演示数据 · 未接入真实账号' : '';
                     render();
@@ -162,8 +168,9 @@
         };
         xhr.send(null);
     }
-    function tick() { if (!active) return; updateClock(); render(); clockTimer = setTimeout(tick, 60000 - new Date().getTime() % 60000 + 20); }
-    function pause() { if (window.kindle && window.kindle.device && typeof window.kindle.device.setSensitivity === 'function') window.kindle.device.setSensitivity(false); clearTimeout(manualTimer); manualUntil = 0; var manual = manualRequest; manualRequest = null; if (manual) manual.abort(); text('refresh', '刷新数据'); DeskCompanion.pause(); active = false; clearTimeout(clockTimer); clearTimeout(pollTimer); clearTimeout(deadline); clearTimeout(fullTimer); clearTimeout(fullDebounce); var pending = request; request = null; if (pending) pending.abort(); var repaint = fullRequest; fullRequest = null; if (repaint) repaint.abort(); el('refresh').disabled = manualUntil > 0; }
+    function tick() { if (!active) return; updateClock(); DeskDetails.update(null, !!transportMessage && transportMessage.indexOf('演示') !== 0); render(); clockTimer = setTimeout(tick, 60000 - new Date().getTime() % 60000 + 20); }
+    function pause() {
+        DeskDetails.close(); if (window.kindle && window.kindle.device && typeof window.kindle.device.setSensitivity === 'function') window.kindle.device.setSensitivity(false); clearTimeout(manualTimer); manualUntil = 0; var manual = manualRequest; manualRequest = null; if (manual) manual.abort(); text('refresh', '刷新数据'); DeskCompanion.pause(); active = false; clearTimeout(clockTimer); clearTimeout(pollTimer); clearTimeout(deadline); clearTimeout(fullTimer); clearTimeout(fullDebounce); var pending = request; request = null; if (pending) pending.abort(); var repaint = fullRequest; fullRequest = null; if (repaint) repaint.abort(); el('refresh').disabled = manualUntil > 0; }
     function enter() { if (active) return; if (window.kindle && window.kindle.device && typeof window.kindle.device.setSensitivity === 'function') window.kindle.device.setSensitivity(false); active = true; DeskCompanion.resume(); snapshot = null; panelUpdated = 0; el('closed').hidden = true; fit(); tick(); load(); queueFullRefresh(); }
     el('next').onclick = function () { var count = Math.max(1, Math.ceil(DeskModel.derive(snapshot, now()).rows.length / 2)); page = (page + 1) % count; render(); queueFullRefresh(); };
     el('refresh').onclick = manualRefresh;

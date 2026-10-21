@@ -9,7 +9,7 @@ let s = snapshot('pro', 'B'); s.codex.quotaAccountKey = 'A'; assert.equal(model.
 s = snapshot(); s.codex.state = 'switching'; assert.equal(model.derive(s, now).rows.length, 0);
 s = snapshot(); s.codex.state = 'signed_out'; assert.equal(model.derive(s, now).account, null);
 s = snapshot(); s.codex.fetchedAt = now - 601; assert.equal(model.derive(s, now).rows.length, 0);
-s = snapshot(); s.computer.sampledAt = now - 46; assert.equal(model.derive(s, now).computer, null);
+s = snapshot(); s.computer.sampledAt = now - 46; assert.equal(model.derive(s, now).computer.cpu, 24); assert.equal(model.derive(s, now).computerState, '电脑数据已过期');
 s = snapshot(); s.codex.buckets[0].primary.resetsAt = now; assert.equal(model.derive(s, now).rows[0].remaining, null);
 s = snapshot(); s.codex.buckets[0].secondary = null; assert.equal(model.derive(s, now).rows.length, 1);
 s = snapshot(); s.codex.buckets[0].primary.usedPercent = null; assert.equal(model.derive(s, now).rows[0].remaining, null);

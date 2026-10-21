@@ -369,7 +369,8 @@ def companion_worker(port, rollout=None):
     from environment import EnvironmentReader, presence_status
     from ccswitch_quota import OtherAccountReader
     from pet_selection import selection
-    from pet_activity import ActivityReader
+    from pet_activity import ActivityReader, LatestActivityReader
+    import sqlite3
     other = OtherAccountReader()
     def read_other():
         refresh_id = 0
@@ -403,12 +404,18 @@ def companion_worker(port, rollout=None):
             time.sleep(60)
     threading.Thread(target=read_environment, daemon=True).start()
     home = Path.home() / '.codex'
-    activity = ActivityReader(rollout) if rollout else None
+    activity = ActivityReader(rollout) if rollout else LatestActivityReader(home / 'state_5.sqlite')
     manifest_path = APP / 'pets/manifest.json'
     manifest = json.loads(manifest_path.read_text(encoding='utf-8')) if manifest_path.exists() else {}
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     while True:
-        value = dict(pet=selection(home, manifest), activity=activity.read() if activity else dict(state='unknown', message=''), otherAccount=other.value,
+        try:
+            activity_value = activity.read()
+        except (OSError, ValueError, sqlite3.Error) as error:
+            activity_value = dict(state='unknown', message='会话进度暂不可用')
+            if sys.stderr:
+                print('Activity read failed: ' + type(error).__name__, file=sys.stderr, flush=True)
+        value = dict(pet=selection(home, manifest), activity=activity_value, otherAccount=other.value,
                      environment=dict(presence=presence_status(), weather=environment.weather, indoor=environment.indoor))
         req = urllib.request.Request('http://127.0.0.1:%d/companion' % port,
                                      data=json.dumps(value).encode(), headers={'Content-Type': 'application/json'})
@@ -458,7 +465,7 @@ if __name__ == '__main__':
     parser.add_argument('--host', default='0.0.0.0')
     parser.add_argument('--port', type=int, default=18768)
     parser.add_argument('--codex', default=shutil.which('codex'))
-    parser.add_argument('--rollout', type=Path, help='Optional Codex session JSONL; public messages only')
+    parser.add_argument('--rollout', type=Path, help='Pin one session JSONL; default follows the latest main conversation')
     args = parser.parse_args()
     if args.rollout and not args.rollout.is_file():
         parser.error('--rollout must be an existing JSONL file')

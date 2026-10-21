@@ -1,9 +1,41 @@
 """Read public Codex rollout activity; never forward reasoning or tool output."""
 import json
 import re
+import sqlite3
 import time
 from datetime import datetime
 from pathlib import Path
+
+
+class LatestActivityReader:
+    """Follow the user's most recently started/resumed main conversation."""
+    def __init__(self, database):
+        self.database = Path(database)
+        self.selected_path = None
+        self.reader = None
+
+    def read(self):
+        connection = sqlite3.connect(self.database.resolve().as_uri() + '?mode=ro', uri=True)
+        try:
+            row = connection.execute("""
+                SELECT rollout_path, title FROM threads
+                WHERE archived = 0 AND thread_source = 'user'
+                    AND agent_path IS NULL AND source IN ('vscode', 'cli')
+                ORDER BY recency_at_ms DESC, created_at_ms DESC, id DESC
+                LIMIT 1
+            """).fetchone()
+        finally:
+            connection.close()
+        path = Path(row[0]) if row else None
+        if path != self.selected_path:
+            self.selected_path = path
+            self.reader = ActivityReader(path) if path else None
+        if self.reader is None:
+            return dict(state='unknown', title='当前 Codex 任务', message='',
+                        sampledAt=int(time.time()), eventAt=0, source='local-rollout')
+        value = self.reader.read()
+        value['title'] = row[1] or '当前 Codex 任务'
+        return value
 
 
 class ActivityReader:

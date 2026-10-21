@@ -35,7 +35,8 @@ def presence_status():
 
 def fetch_weather(latitude, longitude):
     url = ('https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s'
-           '&current=temperature_2m,weather_code&hourly=weather_code'
+           '&current=temperature_2m,weather_code&hourly=weather_code,temperature_2m,precipitation_probability'
+           '&daily=temperature_2m_max,temperature_2m_min'
            '&forecast_days=2&timeformat=unixtime&timezone=auto') % (latitude, longitude)
     with opener.open(url, timeout=8) as response:
         forecast = json.load(response)
@@ -44,8 +45,15 @@ def fetch_weather(latitude, longitude):
     rain = any(code in rain_codes for stamp, code in
                zip(forecast['hourly']['time'], forecast['hourly']['weather_code'])
                if now <= stamp <= now + 6 * 3600)
+    hourly = forecast['hourly']
+    hours = [dict(at=stamp, temperature=temperature, code=code, rainProbability=probability)
+             for stamp, temperature, code, probability in zip(hourly['time'], hourly['temperature_2m'],
+                 hourly['weather_code'], hourly['precipitation_probability']) if stamp >= now][:7]
+    daily = forecast['daily']
     return dict(temperature=current['temperature_2m'], code=current['weather_code'],
-                forecastRain=rain, sampledAt=now)
+                forecastRain=rain, sampledAt=now, hours=hours,
+                today=dict(at=daily['time'][0], minimum=daily['temperature_2m_min'][0],
+                           maximum=daily['temperature_2m_max'][0]))
 
 
 def fetch_indoor(ip, token):

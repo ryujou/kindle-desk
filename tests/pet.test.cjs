@@ -27,6 +27,11 @@ for (let frame = 0; frame < 12; frame++) {
 }
 assert.equal(pet.reactionRow, null);
 assert.equal(pet.currentRow(), 6);
+for (const state of ['waiting', 'failed', 'review']) {
+    pet.setState(state); pet.cycleAnimation();
+    assert.equal(pet.reactionRow, null);
+}
+pet.setState('running');
 for (const row of [4, 1, 2, 3]) {
     pet.cycleAnimation();
     assert.equal(pet.currentRow(), row);

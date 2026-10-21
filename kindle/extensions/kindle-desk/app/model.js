@@ -12,8 +12,8 @@
         var result = { computer: null, computerState: '电脑未连接', account: null, quotaState: '额度未获取', rows: [], quotaAt: null };
         if (!snapshot || snapshot.schemaVersion !== 1) return result;
         var pc = snapshot.computer;
-        if (pc && fresh(pc.sampledAt, now, 45)) {
-            result.computerState = '电脑在线';
+        if (pc) {
+            result.computerState = fresh(pc.sampledAt, now, 45) ? '电脑在线' : '电脑数据已过期';
             result.computer = {
                 cpu: percent(pc.cpuPercent), ram: percent(pc.memoryPercent), gpu: percent(pc.gpuPercent),
                 used: number(pc.memoryUsedGiB) && pc.memoryUsedGiB >= 0 ? pc.memoryUsedGiB : null,

@@ -60,12 +60,17 @@
         this.frame = 0; this.draw(); this.schedule();
     };
     Pet.prototype.cycleAnimation = function () {
+        if (this.state === 'waiting' || this.state === 'failed' || this.state === 'review') return;
         if (!this.enabled || !this.petId || this.node.style.visibility === 'hidden') return;
         var actions = [3, 4, 1, 2];
         this.reactionRow = actions[this.nextReaction];
         this.nextReaction = (this.nextReaction + 1) % actions.length;
         this.reactionLoops = 3; this.frame = 0;
         this.draw(); this.schedule();
+    };
+    Pet.prototype.cancelReaction = function () {
+        if (this.reactionRow === null) return;
+        this.reactionRow = null; this.frame = 0; this.draw(); this.schedule();
     };
     Pet.prototype.setMode = function (mode) { this.mode = mode; this.schedule(); };
     Pet.prototype.setPet = function (value) {
